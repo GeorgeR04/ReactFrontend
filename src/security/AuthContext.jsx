@@ -5,7 +5,10 @@ import { useNavigate } from 'react-router-dom';
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-    const [token, setToken] = useState(() => sessionStorage.getItem('token'));
+    const [token, setToken] = useState(() => {
+        const storedToken = sessionStorage.getItem('token');
+        return storedToken && storedToken.length <= 2048 ? storedToken.trim() : null;
+    });
     const [user, setUser] = useState(null);
     const navigate = useNavigate();
 
@@ -19,11 +22,10 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-
     useEffect(() => {
         const storedToken = sessionStorage.getItem('token');
-        if (storedToken && !isTokenExpired(storedToken)) {
-            setToken(storedToken);
+        if (storedToken && storedToken.length <= 2048 && !isTokenExpired(storedToken)) {
+            setToken(storedToken.trim());
             setUser(jwtDecode(storedToken));
         } else {
             setToken(null);
@@ -32,12 +34,25 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     const login = (newToken) => {
-        const decoded = jwtDecode(newToken);
-        sessionStorage.setItem('token', newToken);
-        sessionStorage.setItem('username', decoded.sub);
-        setToken(newToken);
-        setUser(decoded);
-        navigate(`/user/${decoded.sub}`);
+        if (newToken.length > 1024) {  // Choose a sensible limit for the backend
+            console.error("Token size too large, rejecting token.");
+            logout();
+            return;
+        }
+        // Continue with trimmed token
+        const cleanedToken = newToken.trim();
+        try {
+            const decoded = jwtDecode(cleanedToken);
+            sessionStorage.setItem('token', cleanedToken);
+            sessionStorage.setItem('username', decoded.sub);
+            setToken(cleanedToken);
+            setUser(decoded);
+            navigate(`/user/${decoded.sub}`);
+        } catch (e) {
+            console.error("Invalid token format:", e);
+            setToken(null);
+            setUser(null);
+        }
     };
 
     const logout = () => {
