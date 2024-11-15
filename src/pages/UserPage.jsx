@@ -13,6 +13,15 @@ function UserPage() {
     const [selectedImageType, setSelectedImageType] = useState('');
     const [slideIn, setSlideIn] = useState(false);
     const [modalPosition, setModalPosition] = useState('50%'); // Default to center
+    const [role, setRole] = useState('');
+    const [specialization, setSpecialization] = useState('');
+    const [game, setGame] = useState('');
+    const [games, setGames] = useState([]); // Store games from backend
+    const [specializations, setSpecializations] = useState([]); // Store specializations from backend
+    const [showRoleMenu, setShowRoleMenu] = useState(false);
+    const [showSpecializationMenu, setShowSpecializationMenu] = useState(false);
+    const [showGameMenu, setShowGameMenu] = useState(false);
+    const [isSubmitted, setIsSubmitted] = useState(false);
 
     const getCleanToken = () => (token ? token.trim() : '');
 
@@ -58,18 +67,88 @@ function UserPage() {
             }
         };
 
+        const fetchGames = async () => {
+            try {
+                const response = await fetch('http://localhost:8080/api/games', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${cleanToken}`,
+                    },
+                });
+
+                if (!response.ok) {
+                    console.error('Failed to fetch games:', response.statusText);
+                    setGames([]); // Set games to an empty array to prevent rendering issues
+                    return; // Exit without throwing an error
+                }
+
+                const data = await response.json();
+                setGames(data);
+            } catch (error) {
+                console.error('Error fetching games:', error);
+                setGames([]); // Set games to an empty array to allow navigation
+            }
+        };
+
+
+        const fetchSpecializations = async () => {
+            try {
+                const response = await fetch('http://localhost:8080/api/specializations', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${cleanToken}`,
+                    },
+                });
+
+                if (!response.ok) {
+                    console.error('Failed to fetch specializations:', response.statusText);
+                    setSpecializations([]); // Set specializations to an empty array to prevent rendering issues
+                    return; // Exit without throwing an error
+                }
+
+                const data = await response.json();
+                setSpecializations(data);
+            } catch (error) {
+                console.error('Error fetching specializations:', error);
+                setSpecializations([]); // Set specializations to an empty array to allow navigation
+            }
+        };
+
+
         fetchUserProfile();
+        fetchGames();
+        fetchSpecializations();
 
         return () => setSlideIn(false);
     }, [username, token, navigate, logout]);
 
     useEffect(() => {
         if (isModalOpen) {
-            // Calculate viewport center relative to scroll position
             const viewportCenter = window.scrollY + window.innerHeight / 2;
             setModalPosition(viewportCenter);
         }
     }, [isModalOpen]);
+
+    const handleRoleSelection = (selectedRole) => {
+        setRole(selectedRole);
+        if (selectedRole === 'player') {
+            setShowSpecializationMenu(true);
+        } else {
+            setShowSpecializationMenu(false);
+            setSpecialization('');
+            setShowGameMenu(false);
+            setGame('');
+        }
+    };
+
+    const handleSpecializationSelection = (selectedSpecialization) => {
+        setSpecialization(selectedSpecialization);
+        setShowGameMenu(true);
+    };
+
+    const handleGameSelection = (selectedGame) => {
+        setGame(selectedGame);
+    };
 
     const handleImageSelect = (e) => {
         const file = e.target.files[0];
@@ -83,7 +162,10 @@ function UserPage() {
     };
 
     const handleImageUpload = async () => {
-        if (!selectedImage) return;
+        if (!selectedImage) {
+            setError('Please select an image before uploading.');
+            return;
+        }
 
         const cleanToken = getCleanToken();
 
@@ -102,17 +184,56 @@ function UserPage() {
             });
 
             if (!response.ok) {
-                if (response.status === 403) {
-                    throw new Error('Access forbidden: You do not have permission to upload images.');
-                }
-                throw new Error('Failed to upload image');
+                console.error('Failed to upload image:', response.statusText);
+                setError('Image upload failed. Please try again later.');
+                return; // Exit without throwing an error
             }
 
             const updatedData = await response.json();
             setUserProfile(updatedData);
             setIsModalOpen(false);
-        } catch (err) {
-            setError(err.message);
+        } catch (error) {
+            console.error('Error during image upload:', error);
+            setError('An error occurred while uploading the image. Please try again.');
+        }
+    };
+
+    const handleSubmit = async () => {
+        const cleanToken = getCleanToken();
+
+        if (!role) {
+            setError('Please select a role before submitting.');
+            return;
+        }
+
+        try {
+            const response = await fetch('http://localhost:8080/api/profile/set-player-details', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${cleanToken}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    role,
+                    specialization: specialization || null,
+                    game: game || null,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to update profile. Please try again.');
+            }
+
+            const updatedProfile = await response.json();
+            setUserProfile(updatedProfile);
+            setError('');
+            setIsSubmitted(true); // Marque la soumission comme terminée
+            setShowSpecializationMenu(false); // Cache le menu des spécialisations
+            setShowGameMenu(false); // Cache le menu des jeux
+            setShowRoleMenu(false); // Cache le menu des rôles
+        } catch (error) {
+            console.error('Error updating profile:', error);
+            setError(error.message);
         }
     };
 
@@ -152,7 +273,6 @@ function UserPage() {
                 className="relative w-full h-72 bg-black cursor-pointer hover:opacity-90 transition duration-300 mb-8"
                 onClick={() => openModal('banner')}
             >
-                {/* Dark gradient over the banner */}
                 <div className="absolute inset-0 bg-gradient-to-b from-gray-900 to-transparent"></div>
                 {userProfile.bannerImage && (
                     <img
@@ -164,16 +284,14 @@ function UserPage() {
                 )}
             </div>
 
-            {/* Main Container with Slide-In Animation */}
+            {/* Main Container */}
             <div className={`relative w-full min-h-screen bg-gray-900 text-white p-4 transition transform duration-1000 ease-out ${slideIn ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
                 {/* Profile and Tournament Section */}
                 <div className="relative flex flex-col md:flex-row gap-8 mt-4">
-                    {/* Profile Rectangle */}
                     <div
                         className="absolute transform translate-y-[-100%] bg-gray-800 text-white rounded-lg p-6 shadow-lg flex flex-col items-center space-y-4"
                         style={{ top: '60%', left: '10rem' }}
                     >
-                        {/* Profile Image */}
                         <div
                             className="relative w-32 h-32 rounded-full overflow-hidden cursor-pointer hover:opacity-90 transition duration-300"
                             onClick={() => openModal('profile')}
@@ -184,8 +302,6 @@ function UserPage() {
                                 className="w-full h-full object-cover shadow-md"
                             />
                         </div>
-
-                        {/* User Info */}
                         <div className="text-center">
                             <h2 className="text-xl font-semibold">
                                 {userProfile.firstname} <span>"{userProfile.username}"</span> {userProfile.lastname}
@@ -222,7 +338,89 @@ function UserPage() {
                     </button>
                 </div>
 
-                {/* Compact Modal for Image Upload Centered in the User's Viewport */}
+                {/* Role Selection */}
+                <div className="p-4">
+                    <button
+                        onClick={() => setShowRoleMenu(!showRoleMenu)}
+                        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+                    >
+                        Select Role
+                    </button>
+                    {!isSubmitted && showRoleMenu && (
+                        <div className="mt-4 space-y-2">
+                            <button
+                                onClick={() => handleRoleSelection('player')}
+                                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
+                            >
+                                Player
+                            </button>
+                            <button
+                                onClick={() => handleRoleSelection('organizer')}
+                                className="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600"
+                            >
+                                Organizer
+                            </button>
+                        </div>
+                    )}
+                </div>
+
+                {/* Specialization Selection */}
+                {!isSubmitted && showSpecializationMenu && (
+                    <div className="p-4">
+                        <h3 className="text-xl font-semibold mb-2">Select Specialization</h3>
+                        <div className="space-y-2">
+                            {specializations.length > 0 ? (
+                                specializations.map((spec) => (
+                                    <button
+                                        key={spec.id}
+                                        onClick={() => handleSpecializationSelection(spec.name)}
+                                        className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
+                                    >
+                                        {spec.name}
+                                    </button>
+                                ))
+                            ) : (
+                                <p className="text-gray-400">No specializations available</p>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Game Selection */}
+                {!isSubmitted && showGameMenu && (
+                    <div className="p-4">
+                        <h3 className="text-xl font-semibold mb-2">Select Game</h3>
+                        <div className="space-y-2">
+                            {games.length > 0 ? (
+                                games.map((game) => (
+                                    <button
+                                        key={game.id}
+                                        onClick={() => handleGameSelection(game.name)}
+                                        className="bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600"
+                                    >
+                                        {game.name}
+                                    </button>
+                                ))
+                            ) : (
+                                <p className="text-gray-400">No games available</p>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Submit Button */}
+                {!isSubmitted && role && specialization && game && (
+                    <div className="p-4">
+                        <button
+                            onClick={handleSubmit}
+                            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+                        >
+                            Submit
+                        </button>
+                    </div>
+                )}
+
+                {/* Compact Modal for Image Upload */}
                 {isModalOpen && (
                     <div className="top-[-20rem] fixed inset-0 bg-black bg-opacity-60 flex items-start justify-center z-[1000]">
                         <div
@@ -258,8 +456,6 @@ function UserPage() {
                         </div>
                     </div>
                 )}
-
-
 
                 {/* Back to Home Link */}
                 <div className="mt-6 text-center">
