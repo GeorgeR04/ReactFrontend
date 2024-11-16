@@ -83,8 +83,8 @@ function Home() {
                 </div>
 
                 {/* Image Credit - Bottom Left */}
-                <div className="absolute bottom-4 left-4 text-white bg-black bg-opacity-50 px-2 py-1 rounded-md text-sm italic">
-                    © ESL IEM Cologne
+                <div className="absolute bottom-4 left-4 text-white text-sm bg-black bg-opacity-75 px-4 py-2 rounded-md italic">
+                    &copy;ESL IEM Cologne
                 </div>
             </div>
         </div>

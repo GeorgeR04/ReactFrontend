@@ -96,8 +96,8 @@ function Register() {
                     }}
                 >
                     {/* Copyright Section for Each Image */}
-                    <div className="absolute bottom-4 left-4 text-white italic text-sm">
-                        @ Blast Final 2024
+                    <div className="absolute bottom-4 left-4 text-white text-sm bg-black bg-opacity-75 px-4 py-2 rounded-md italic">
+                        &copy;Blast Final 2024
                     </div>
                 </div>
             ))}

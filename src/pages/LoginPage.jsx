@@ -132,8 +132,8 @@ function Login() {
             </div>
 
             {/* Copyright Section in the Bottom Left */}
-            <div className="absolute bottom-4 left-4 text-white italic text-sm">
-                © ESL IEM COLOGNE
+            <div className="absolute bottom-4 left-4 text-white text-sm bg-black bg-opacity-75 px-4 py-2 rounded-md italic">
+                &copy;ESL IEM COLOGNE
             </div>
         </div>
     );

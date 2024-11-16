@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Login from './pages/LoginPage';
 import UserPage from './pages/UserPage';
@@ -8,13 +8,16 @@ import { AuthProvider } from './security/AuthContext';
 import ProtectedRoute from './security/ProtectedRoute';
 import Header from './components/Header';
 import Footer from './components/Footer';
-
+import Tournament from './pages/Tournament';
+import Games from './pages/Game';
 function App() {
+    const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+
     return (
         <AuthProvider>
             <div className="app-container w-full min-h-screen flex flex-col">
                 {/* Header section */}
-                <Header />
+                <Header onOpenRoleModal={() => setIsRoleModalOpen(true)} />
 
                 {/* Main content area for routing */}
                 <main className="flex-grow w-full">
@@ -23,10 +26,15 @@ function App() {
                         <Route path="/" element={<Home />} />
                         <Route path="/login" element={<Login />} />
                         <Route path="/register" element={<Register />} />
+                        <Route path="/tournament" element={<Tournament />} />
+                        <Route path="/games" element={<Games />} />
 
                         {/* Protected route */}
                         <Route element={<ProtectedRoute />}>
-                            <Route path="/user/:username" element={<UserPage />} />
+                            <Route
+                                path="/user/:username"
+                                element={<UserPage isRoleModalOpen={isRoleModalOpen} setIsRoleModalOpen={setIsRoleModalOpen} />}
+                            />
                         </Route>
                     </Routes>
                 </main>
