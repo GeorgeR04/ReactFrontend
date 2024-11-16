@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import Video from '../assets/Video/BackgroundVideo.mp4';
 
 const Tournament = () => {
@@ -68,6 +69,13 @@ const Tournament = () => {
                         <p className="text-lg">
                             Are you ready to take your place in the story of esports? Whether you create, compete, or cheer from the stands, the journey begins here. <strong>The stage is set, and the world is watching.</strong>
                         </p>
+                        {/* Explore Button */}
+                        <Link
+                            to="/tournament/explore"
+                            className="mt-6 inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg"
+                        >
+                            Explore
+                        </Link>
                     </div>
                 </div>
             </div>

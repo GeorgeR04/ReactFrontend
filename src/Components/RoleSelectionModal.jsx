@@ -31,7 +31,7 @@ const RoleSelectionModal = ({ isOpen, onClose, onSave }) => {
 
             const fetchGames = async () => {
                 try {
-                    const response = await fetch('http://localhost:8080/api/games', {
+                    const response = await fetch('http://localhost:8080/api/games/list', {
                         method: 'GET',
                         headers: { Authorization: `Bearer ${sessionStorage.getItem('token')}` },
                     });

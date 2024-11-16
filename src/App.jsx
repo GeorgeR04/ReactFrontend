@@ -10,6 +10,8 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import Tournament from './pages/Tournament';
 import Games from './pages/Game';
+import TournamentExplore from './pages/TournamentExplore';
+import TournamentCreate from './pages/TournamentCreate';
 function App() {
     const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
 
@@ -28,7 +30,9 @@ function App() {
                         <Route path="/register" element={<Register />} />
                         <Route path="/tournament" element={<Tournament />} />
                         <Route path="/games" element={<Games />} />
-
+                        <Route path="/tournament/explore" element={<TournamentExplore />} />
+                        <Route path="/tournament/create" element={<TournamentCreate />} />
+                        {/*  <Route path="/tournament/explore/:name" element={<TournamentDetails />} /> */}
                         {/* Protected route */}
                         <Route element={<ProtectedRoute />}>
                             <Route
