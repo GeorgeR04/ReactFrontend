@@ -1,27 +1,23 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useContext } from 'react';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { AuthContext } from '../security/AuthContext.jsx';
 import logoImage from '../assets/Image/LogoHome.png';
 import RoleSelectionModal from './RoleSelectionModal';
 
 const Header = () => {
+    const location = useLocation(); // Obtenir la route active
     const navigate = useNavigate();
-    const token = sessionStorage.getItem('token');
-    const username = sessionStorage.getItem('username');
+    const { token, user, logout } = useContext(AuthContext);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
 
-    const handleProfileNavigation = () => {
-        if (token && username) {
-            navigate(`/user/${username}`);
-        } else {
+    const handleLogout = () => {
+        logout();
+
+        // Rediriger uniquement si l'utilisateur est sur la page profil
+        if (location.pathname.startsWith('/user')) {
             navigate('/login');
         }
-    };
-
-    const handleLogout = () => {
-        sessionStorage.removeItem('token');
-        sessionStorage.removeItem('username');
-        navigate('/login');
     };
 
     return (
@@ -51,7 +47,7 @@ const Header = () => {
                     onMouseEnter={() => setIsDropdownOpen(true)}
                     onMouseLeave={() => setIsDropdownOpen(false)}
                 >
-                    {token && username ? (
+                    {token && user ? (
                         <>
                             <button className="bg-black hover:bg-gray-800 text-white font-bold px-4 py-2 rounded-lg">
                                 My Profile
@@ -59,20 +55,20 @@ const Header = () => {
                             {isDropdownOpen && (
                                 <div className="absolute top-[2.5rem] right-0 bg-gray-800 text-white rounded-lg shadow-xl z-50 w-48">
                                     <button
-                                        onClick={handleProfileNavigation}
                                         className="block px-4 py-2 hover:bg-gray-950 w-full text-left"
+                                        onClick={() => navigate(`/user/${user.username}`)}
                                     >
                                         Go to Profile
                                     </button>
                                     <button
-                                        onClick={() => setIsRoleModalOpen(true)}
                                         className="block px-4 py-2 hover:bg-gray-950 w-full text-left"
+                                        onClick={() => setIsRoleModalOpen(true)}
                                     >
                                         Select Role
                                     </button>
                                     <button
-                                        onClick={handleLogout}
                                         className="block px-4 py-2 hover:bg-gray-950 w-full text-left"
+                                        onClick={handleLogout}
                                     >
                                         Logout
                                     </button>

@@ -1,49 +1,46 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../../security/AuthContext.jsx';
 
 const TournamentCreate = () => {
+    const { token, user, isTokenExpired, logout } = useContext(AuthContext);
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [type, setType] = useState('solo'); // Default to "solo"
-    const [maxTeams, setMaxTeams] = useState(0);
+    const [maxTeams, setMaxTeams] = useState(''); // Represents "Max Players" for solo tournaments
     const [gameId, setGameId] = useState('');
-    const [games, setGames] = useState([]); // Store games from backend
-    const [rankRequirement, setRankRequirement] = useState(0);
-    const [trustFactorRequirement, setTrustFactorRequirement] = useState(0);
+    const [games, setGames] = useState([]); // Games fetched from backend
+    const [minRankRequirement, setMinRankRequirement] = useState('');
+    const [maxRankRequirement, setMaxRankRequirement] = useState('');
+    const [trustFactorRequirement, setTrustFactorRequirement] = useState('');
     const [visibility, setVisibility] = useState('public'); // Default visibility
-    const [image, setImage] = useState(null); // Store Base64 image
-    const [loadingGames, setLoadingGames] = useState(true); // Loading state for games
+    const [image, setImage] = useState(null); // Base64 image
+    const [cashPrize, setCashPrize] = useState(''); // Cash prize
+    const [loadingGames, setLoadingGames] = useState(true); // Loading indicator
     const navigate = useNavigate();
 
-    // Fetch games from the backend
     useEffect(() => {
+        if (!token || isTokenExpired(token)) {
+            logout();
+            alert('Session expired. Please log in again.');
+            navigate('/login');
+            return;
+        }
+
         const fetchGames = async () => {
-            const token = sessionStorage.getItem('token');
-            console.log('Token used for fetching games:', token);
-
-            if (!token) {
-                alert('Please log in to fetch games.');
-                navigate('/login');
-                return;
-            }
-
             try {
                 setLoadingGames(true);
                 const response = await fetch('http://localhost:8080/api/games/list', {
                     headers: {
-                        Authorization: `Bearer ${token.trim()}`, // Ensure token is clean
+                        Authorization: `Bearer ${token}`,
                     },
                 });
 
                 if (response.ok) {
                     const gamesData = await response.json();
-                    console.log('Fetched games:', gamesData);
                     setGames(gamesData);
-                } else {
-                    console.error('Failed to fetch games:', response.status);
-                    if (response.status === 403) {
-                        alert('You are not authorized to view this resource.');
-                    }
+                } else if (response.status === 403) {
+                    alert('You are not authorized to view games.');
                 }
             } catch (error) {
                 console.error('Error fetching games:', error);
@@ -53,27 +50,51 @@ const TournamentCreate = () => {
         };
 
         fetchGames();
-    }, [navigate]);
+    }, [token, isTokenExpired, logout, navigate]);
 
     const handleImageChange = (e) => {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = () => {
-                setImage(reader.result.split(',')[1]); // Extract Base64 string
-            };
+            reader.onload = () => setImage(reader.result.split(',')[1]);
             reader.readAsDataURL(file);
         }
     };
 
     const handleCreate = async () => {
+        if (!token || isTokenExpired(token)) {
+            logout();
+            alert('Session expired. Please log in again.');
+            navigate('/login');
+            return;
+        }
+
+        if (!maxTeams || maxTeams <= 0) {
+            alert('You must specify a positive value for max players or max teams.');
+            return;
+        }
+
+        if (minRankRequirement && maxRankRequirement && minRankRequirement > maxRankRequirement) {
+            alert('Minimum rank cannot exceed maximum rank.');
+            return;
+        }
+
         try {
-            const token = sessionStorage.getItem('token');
-            if (!token) {
-                alert('Please log in to create a tournament.');
-                navigate('/login');
-                return;
-            }
+            const payload = {
+                name,
+                description,
+                type,
+                maxTeams: parseInt(maxTeams), // Map to backend's maxTeams
+                gameId,
+                minRankRequirement: parseInt(minRankRequirement) || null,
+                maxRankRequirement: parseInt(maxRankRequirement) || null,
+                trustFactorRequirement: parseInt(trustFactorRequirement) || null,
+                visibility,
+                image,
+                cashPrize: parseFloat(cashPrize) || 0,
+            };
+
+            console.log('Payload:', payload);
 
             const response = await fetch('http://localhost:8080/api/tournaments/create', {
                 method: 'POST',
@@ -81,27 +102,15 @@ const TournamentCreate = () => {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({
-                    name,
-                    description,
-                    type,
-                    maxTeams,
-                    gameId,
-                    rankRequirement,
-                    trustFactorRequirement,
-                    visibility,
-                    image,
-                }),
+                body: JSON.stringify(payload),
             });
 
             if (response.ok) {
-                const newTournament = await response.json();
-                console.log('Tournament created:', newTournament);
                 alert('Tournament created successfully!');
                 navigate('/tournament/explore');
             } else {
                 const errorText = await response.text();
-                console.error('Failed to create tournament:', errorText);
+                console.error('Server Error:', errorText);
                 alert(`Failed to create tournament: ${errorText}`);
             }
         } catch (error) {
@@ -138,24 +147,13 @@ const TournamentCreate = () => {
                         <option value="" disabled>
                             {loadingGames ? 'Loading games...' : 'Select Game'}
                         </option>
-                        {games.length === 0 && !loadingGames ? (
-                            <option disabled>No games available</option>
-                        ) : (
-                            games.map((game) => (
-                                <option key={game.id} value={game.id}>
-                                    {game.name}
-                                </option>
-                            ))
-                        )}
+                        {games.map((game) => (
+                            <option key={game.id} value={game.id}>
+                                {game.name}
+                            </option>
+                        ))}
                     </select>
                 </div>
-                <input
-                    type="number"
-                    placeholder="Max Teams"
-                    value={maxTeams}
-                    onChange={(e) => setMaxTeams(e.target.value)}
-                    className="w-full px-4 py-2 rounded bg-gray-900 text-white"
-                />
                 <select
                     value={type}
                     onChange={(e) => setType(e.target.value)}
@@ -166,9 +164,30 @@ const TournamentCreate = () => {
                 </select>
                 <input
                     type="number"
-                    placeholder="Rank Requirement"
-                    value={rankRequirement}
-                    onChange={(e) => setRankRequirement(e.target.value)}
+                    placeholder={type === 'team' ? 'Max Teams' : 'Max Players'}
+                    value={maxTeams}
+                    onChange={(e) => setMaxTeams(e.target.value)}
+                    className="w-full px-4 py-2 rounded bg-gray-900 text-white"
+                />
+                <input
+                    type="number"
+                    placeholder="Cash Prize"
+                    value={cashPrize}
+                    onChange={(e) => setCashPrize(e.target.value)}
+                    className="w-full px-4 py-2 rounded bg-gray-900 text-white"
+                />
+                <input
+                    type="number"
+                    placeholder="Min Rank Requirement"
+                    value={minRankRequirement}
+                    onChange={(e) => setMinRankRequirement(e.target.value)}
+                    className="w-full px-4 py-2 rounded bg-gray-900 text-white"
+                />
+                <input
+                    type="number"
+                    placeholder="Max Rank Requirement"
+                    value={maxRankRequirement}
+                    onChange={(e) => setMaxRankRequirement(e.target.value)}
                     className="w-full px-4 py-2 rounded bg-gray-900 text-white"
                 />
                 <input

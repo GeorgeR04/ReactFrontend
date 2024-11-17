@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect } from 'react';
 import { jwtDecode } from './jwtDecodeWrapper';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export const AuthContext = createContext();
 
@@ -9,15 +9,20 @@ export const AuthProvider = ({ children }) => {
         const storedToken = sessionStorage.getItem('token');
         return storedToken && storedToken.length <= 2048 ? storedToken.trim() : null;
     });
-    const [user, setUser] = useState(null);
+
+    const [user, setUser] = useState(() => {
+        const storedUser = sessionStorage.getItem('user');
+        return storedUser ? JSON.parse(storedUser) : null;
+    });
+
     const navigate = useNavigate();
+    const location = useLocation();
 
     const isTokenExpired = (token) => {
         try {
             const decoded = jwtDecode(token);
             return decoded.exp * 1000 < Date.now();
-        } catch (e) {
-            console.error('Token decoding error:', e);
+        } catch {
             return true;
         }
     };
@@ -27,7 +32,7 @@ export const AuthProvider = ({ children }) => {
         if (storedToken && storedToken.length <= 2048 && !isTokenExpired(storedToken)) {
             setToken(storedToken.trim());
             const decoded = jwtDecode(storedToken);
-            fetchUserProfile(decoded.sub, storedToken); // Fetch full profile details
+            fetchUserProfile(decoded.sub, storedToken);
         } else {
             setToken(null);
             setUser(null);
@@ -41,24 +46,24 @@ export const AuthProvider = ({ children }) => {
             });
             if (response.ok) {
                 const profileData = await response.json();
-                setUser({
+                const userData = {
                     username: profileData.username,
                     role: profileData.role,
                     specialization: profileData.specialization,
                     game: profileData.game,
-                });
-            } else {
-                console.error('Failed to fetch user profile:', response.status);
-                if (response.status === 401) logout();
+                };
+                setUser(userData);
+                sessionStorage.setItem('user', JSON.stringify(userData));
+            } else if (response.status === 401) {
+                logout();
             }
-        } catch (error) {
-            console.error('Error fetching user profile:', error);
+        } catch {
+            // Optionnel : Gérer les erreurs globales si nécessaire
         }
     };
 
     const login = async (newToken) => {
         if (newToken.length > 1024) {
-            console.error("Token size too large, rejecting token.");
             logout();
             return;
         }
@@ -69,11 +74,9 @@ export const AuthProvider = ({ children }) => {
             sessionStorage.setItem('username', decoded.sub);
             setToken(cleanedToken);
 
-            // Fetch the user profile and navigate after it's fetched
             await fetchUserProfile(decoded.sub, cleanedToken);
-            navigate(`/user/${decoded.sub}`);
-        } catch (e) {
-            console.error("Invalid token format:", e);
+            navigate(-1);
+        } catch {
             setToken(null);
             setUser(null);
         }
@@ -81,10 +84,16 @@ export const AuthProvider = ({ children }) => {
 
     const logout = () => {
         sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
         sessionStorage.removeItem('username');
         setToken(null);
         setUser(null);
-        navigate('/login');
+
+        if (location.pathname.startsWith('/user')) {
+            navigate('/login');
+        } else {
+            navigate(0);
+        }
     };
 
     return (

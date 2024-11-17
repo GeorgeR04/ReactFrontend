@@ -12,6 +12,8 @@ import Tournament from './pages/tournament/Tournament.jsx';
 import Games from './pages/game/Game.jsx';
 import TournamentExplore from './pages/tournament/TournamentExplore.jsx';
 import TournamentCreate from './pages/tournament/TournamentCreate.jsx';
+import TournamentDetails from "./pages/tournament/TournamentDetails.jsx";
+import TournamentEdit from "./pages/tournament/TournamentEdit.jsx";
 function App() {
     const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
 
@@ -32,7 +34,8 @@ function App() {
                         <Route path="/games" element={<Games />} />
                         <Route path="/tournament/explore" element={<TournamentExplore />} />
                         <Route path="/tournament/create" element={<TournamentCreate />} />
-                        {/*  <Route path="/tournament/explore/:name" element={<TournamentDetails />} /> */}
+                        <Route path="/tournament/explore/:id" element={<TournamentDetails />} />
+                        <Route path="/tournament/edit/:id" element={<TournamentEdit />} />
                         {/* Protected route */}
                         <Route element={<ProtectedRoute />}>
                             <Route
