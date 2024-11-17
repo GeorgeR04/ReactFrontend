@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
-import { AuthContext } from '../security/AuthContext';
+import { AuthContext } from '../../security/AuthContext.jsx';
 
 function UserPage() {
     const navigate = useNavigate();

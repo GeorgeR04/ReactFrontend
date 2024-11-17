@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AuthContext } from '../security/AuthContext.jsx';
+import { AuthContext } from '../../security/AuthContext.jsx';
 
 const TournamentExplore = () => {
     const [tournaments, setTournaments] = useState([]);
@@ -8,29 +8,35 @@ const TournamentExplore = () => {
     const { token, user, isTokenExpired, logout } = useContext(AuthContext);
     const navigate = useNavigate();
 
-    // Fetch tournaments
+    // Fetch tournaments without requiring a token
     useEffect(() => {
-        const fetchTournaments = async () => {
+        const fetchTournamentsAndGames = async () => {
             try {
-                const response = await fetch('http://localhost:8080/api/tournaments', {
-                    headers: token ? { Authorization: `Bearer ${token}` } : {},
-                });
+                const tournamentsResponse = await fetch('http://localhost:8080/api/tournaments/list');
+                const gamesResponse = await fetch('http://localhost:8080/api/games');
 
-                if (response.ok) {
-                    const data = await response.json();
-                    setTournaments(data);
+                if (tournamentsResponse.ok && gamesResponse.ok) {
+                    const tournamentsData = await tournamentsResponse.json();
+                    const gamesData = await gamesResponse.json();
+
+                    console.log('Tournaments Data:', tournamentsData);
+                    console.log('Games Data:', gamesData);
+
+                    // No need to map gameId to gameName since gameName is already provided by the backend
+                    setTournaments(tournamentsData);
                 } else {
-                    console.error('Failed to fetch tournaments:', response.status);
+                    console.error('Failed to fetch tournaments or games.');
                 }
             } catch (error) {
-                console.error('Error fetching tournaments:', error);
+                console.error('Error fetching tournaments or games:', error);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchTournaments();
-    }, [token]);
+        fetchTournamentsAndGames();
+    }, []);
+
 
     const ensureAuthenticated = () => {
         if (!token || isTokenExpired(token)) {
@@ -156,52 +162,51 @@ const TournamentExplore = () => {
             {tournaments.length > 0 ? (
                 <ul className="space-y-4">
                     {tournaments.map((tournament) => (
-                        <li
-                            key={tournament.id}
-                            className="p-4 bg-gray-900 rounded-lg shadow-md flex justify-between items-center"
-                        >
+                        <li key={tournament.id} className="p-4 bg-gray-900 rounded-lg shadow-md flex justify-between items-center">
                             <div>
                                 <h2 className="text-2xl font-bold">{tournament.name}</h2>
                                 <p>{tournament.description}</p>
                                 <p>Type: {tournament.type}</p>
-                                <p>Game: {tournament.gameId}</p>
+                                <p>Game: {tournament.gameName}</p> {/* Displays "Unknown Game" if mapping fails */}
                                 <p>Rank Requirement: {tournament.rankRequirement}</p>
                                 <p>Trust Factor Requirement: {tournament.trustFactorRequirement}</p>
                             </div>
-                            <div>
-                                {user?.role === 'organizer' && user.username === tournament.organizerId ? (
-                                    <div className="flex space-x-4">
-                                        <Link
-                                            to={`/tournament/explore/${tournament.id}/edit`}
-                                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded"
-                                        >
-                                            Edit
-                                        </Link>
+                            {user && (
+                                <div>
+                                    {user?.role === 'organizer' && user.username === tournament.organizerId ? (
+                                        <div className="flex space-x-4">
+                                            <Link
+                                                to={`/tournament/explore/${tournament.id}/edit`}
+                                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded"
+                                            >
+                                                Edit
+                                            </Link>
+                                            <button
+                                                onClick={() => handleDeleteTournament(tournament.id)}
+                                                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded"
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
+                                    ) : user?.role === 'player' && tournament.participatingTeamIds?.includes(user.username) ? (
                                         <button
-                                            onClick={() => handleDeleteTournament(tournament.id)}
-                                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded"
+                                            onClick={() => handleLeaveTournament(tournament)}
+                                            className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-bold rounded"
                                         >
-                                            Delete
+                                            Leave
                                         </button>
-                                    </div>
-                                ) : user?.role === 'player' && tournament.participatingTeamIds?.includes(user.username) ? (
-                                    <button
-                                        onClick={() => handleLeaveTournament(tournament)}
-                                        className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-bold rounded"
-                                    >
-                                        Leave
-                                    </button>
-                                ) : (
-                                    user?.role === 'player' && (
-                                        <button
-                                            onClick={() => handleJoinTournament(tournament)}
-                                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded"
-                                        >
-                                            Join
-                                        </button>
-                                    )
-                                )}
-                            </div>
+                                    ) : (
+                                        user?.role === 'player' && (
+                                            <button
+                                                onClick={() => handleJoinTournament(tournament)}
+                                                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded"
+                                            >
+                                                Join
+                                            </button>
+                                        )
+                                    )}
+                                </div>
+                            )}
                         </li>
                     ))}
                 </ul>

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import "./../index.css";
-import backgroundImage1 from "../assets/Image/regjsterImage/G2.jpg";
-import backgroundImage2 from "../assets/Image/regjsterImage/TS.jpg";
-import backgroundImage3 from "../assets/Image/regjsterImage/Navi.jpg";
-import backgroundImage4 from "../assets/Image/regjsterImage/Liquid.jpg";
-import backgroundImage5 from "../assets/Image/regjsterImage/faze.jpg";
+import "../../index.css";
+import backgroundImage1 from "../../assets/Image/regjsterImage/G2.jpg";
+import backgroundImage2 from "../../assets/Image/regjsterImage/TS.jpg";
+import backgroundImage3 from "../../assets/Image/regjsterImage/Navi.jpg";
+import backgroundImage4 from "../../assets/Image/regjsterImage/Liquid.jpg";
+import backgroundImage5 from "../../assets/Image/regjsterImage/faze.jpg";
 import { Link } from 'react-router-dom';
 
 function Register() {

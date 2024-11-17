@@ -1,7 +1,7 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { AuthContext } from '../security/AuthContext';
-import backgroundImage from '../assets/Image/pageImage/loginbacbg.jpg';
+import { AuthContext } from '../../security/AuthContext.jsx';
+import backgroundImage from '../../assets/Image/pageImage/loginbacbg.jpg';
 
 function Login() {
     const [username, setUsername] = useState('');

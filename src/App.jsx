@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
-import Login from './pages/LoginPage';
-import UserPage from './pages/UserPage';
+import Login from './pages/userLR/LoginPage.jsx';
+import UserPage from './pages/user/UserPage.jsx';
 import Home from './pages/Home';
-import Register from './pages/RegisterPage';
+import Register from './pages/userLR/RegisterPage.jsx';
 import { AuthProvider } from './security/AuthContext';
 import ProtectedRoute from './security/ProtectedRoute';
 import Header from './components/Header';
 import Footer from './components/Footer';
-import Tournament from './pages/Tournament';
-import Games from './pages/Game';
-import TournamentExplore from './pages/TournamentExplore';
-import TournamentCreate from './pages/TournamentCreate';
+import Tournament from './pages/tournament/Tournament.jsx';
+import Games from './pages/game/Game.jsx';
+import TournamentExplore from './pages/tournament/TournamentExplore.jsx';
+import TournamentCreate from './pages/tournament/TournamentCreate.jsx';
 function App() {
     const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
 
