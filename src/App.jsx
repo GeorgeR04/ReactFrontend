@@ -14,6 +14,12 @@ import TournamentExplore from './pages/tournament/TournamentExplore.jsx';
 import TournamentCreate from './pages/tournament/TournamentCreate.jsx';
 import TournamentDetails from "./pages/tournament/TournamentDetails.jsx";
 import TournamentEdit from "./pages/tournament/TournamentEdit.jsx";
+import Teams from "./pages/team/Teams.jsx";
+import TeamExplore from "./pages/team/TeamExplore.jsx";
+import TeamCreate from "./pages/team/TeamCreate.jsx";
+import GameExplore from "./pages/game/GameExplore.jsx";
+import GameCreate from "./pages/game/GameCreate.jsx";
+
 function App() {
     const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
 
@@ -31,11 +37,16 @@ function App() {
                         <Route path="/login" element={<Login />} />
                         <Route path="/register" element={<Register />} />
                         <Route path="/tournament" element={<Tournament />} />
-                        <Route path="/games" element={<Games />} />
                         <Route path="/tournament/explore" element={<TournamentExplore />} />
                         <Route path="/tournament/create" element={<TournamentCreate />} />
                         <Route path="/tournament/explore/:id" element={<TournamentDetails />} />
                         <Route path="/tournament/edit/:id" element={<TournamentEdit />} />
+                        <Route path="/games" element={<Games />} />
+                        <Route path="/games/explore" element={<GameExplore />}></Route>
+                        <Route path="/games/create" element={<GameCreate/>}></Route>
+                        <Route path="/teams" element={<Teams />} />
+                        <Route path="/teams/explore" element={<TeamExplore />} />
+                        <Route path="/teams/create" element={<TeamCreate />} />
                         {/* Protected route */}
                         <Route element={<ProtectedRoute />}>
                             <Route

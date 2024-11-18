@@ -4,16 +4,20 @@ import { AuthContext } from '../../security/AuthContext.jsx'; // Adjust the impo
 
 const TournamentExplore = () => {
     const [tournaments, setTournaments] = useState([]);
-    const [filteredTournaments, setFilteredTournaments] = useState([]); // For search results
-    const [searchQuery, setSearchQuery] = useState(''); // Search input state
+    const [filteredTournaments, setFilteredTournaments] = useState([]);
+    const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
 
-    const { token, user } = useContext(AuthContext); // Use AuthContext
+    // New state for filters
+    const [filterDate, setFilterDate] = useState('');
+    const [filterType, setFilterType] = useState('');
+    const [filterOrganizer, setFilterOrganizer] = useState('');
+    const [filterRank, setFilterRank] = useState('');
+
+    const { token, user } = useContext(AuthContext);
     const navigate = useNavigate();
 
-
-
-
+    // Fetch tournaments
     const fetchTournaments = async () => {
         try {
             setLoading(true);
@@ -36,13 +40,22 @@ const TournamentExplore = () => {
         fetchTournaments();
     }, []);
 
-    // Update filtered tournaments based on search query
+    // Update filtered tournaments based on search query and filters
     useEffect(() => {
-        const results = tournaments.filter((tournament) =>
-            tournament.name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
+        const results = tournaments.filter((tournament) => {
+            const matchesSearchQuery = tournament.name.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesDate =
+                !filterDate || new Date(tournament.date).toISOString().split('T')[0] === filterDate;
+            const matchesType = !filterType || tournament.type === filterType;
+            const matchesOrganizer =
+                !filterOrganizer || (tournament.organizerNames && tournament.organizerNames.includes(filterOrganizer));
+            const matchesRank = !filterRank || tournament.rank === filterRank;
+
+            return matchesSearchQuery && matchesDate && matchesType && matchesOrganizer && matchesRank;
+        });
         setFilteredTournaments(results);
-    }, [searchQuery, tournaments]);
+    }, [searchQuery, filterDate, filterType, filterOrganizer, filterRank, tournaments]);
+
 
     const handleJoinTournament = async (tournament) => {
         if (!token) {
@@ -69,7 +82,7 @@ const TournamentExplore = () => {
         }
 
         const payload = tournament.type === 'team'
-            ? { teamLeader: user.username, teamMembers: [] }
+            ? { teamLeader: user.username, teamMembers: [], teamId: "your-team-id" } // Replace with actual teamId
             : {};
 
         try {
@@ -84,9 +97,10 @@ const TournamentExplore = () => {
 
             if (response.ok) {
                 alert('Successfully joined the tournament!');
-                fetchTournaments(); // Refresh the list after joining
+                fetchTournaments();
             } else {
-                alert('Failed to join the tournament.');
+                const errorMessage = await response.text();
+                alert(`Failed to join the tournament: ${errorMessage}`);
             }
         } catch (error) {
             console.error('Error joining tournament:', error);
@@ -142,17 +156,6 @@ const TournamentExplore = () => {
         <div className="p-8 text-white bg-gray-800">
             <h1 className="text-4xl font-bold text-center mb-8">Explore Tournaments</h1>
 
-            {/* Search Bar */}
-            <div className="mb-6 text-center">
-                <input
-                    type="text"
-                    placeholder="Search tournaments by name..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="px-4 py-2 w-1/2 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-600"
-                />
-            </div>
-
             {/* Render the "Create Tournament" button for organizers */}
             {user?.role === 'organizer' && (
                 <div className="mb-8 text-center">
@@ -165,19 +168,80 @@ const TournamentExplore = () => {
                 </div>
             )}
 
+            {/* Search Bar */}
+            <div className="mb-6 text-center">
+                <input
+                    type="text"
+                    placeholder="Search tournaments by name..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="px-4 py-2 w-1/2 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-600"
+                />
+            </div>
+
+            {/* Filter Options */}
+            <div className="flex flex-wrap justify-center mb-6 gap-4">
+                {/* Date Filter */}
+                <input
+                    type="date"
+                    value={filterDate}
+                    onChange={(e) => setFilterDate(e.target.value)}
+                    className="px-4 py-2 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-600"
+                />
+
+                {/* Type Filter */}
+                <select
+                    value={filterType}
+                    onChange={(e) => setFilterType(e.target.value)}
+                    className="px-4 py-2 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-600"
+                >
+                    <option value="">All Types</option>
+                    <option value="team">Team</option>
+                    <option value="solo">Solo</option>
+                </select>
+
+                {/* Organizer Filter */}
+                <select
+                    value={filterOrganizer}
+                    onChange={(e) => setFilterOrganizer(e.target.value)}
+                    className="px-4 py-2 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-600"
+                >
+                    <option value="">All Organizers</option>
+                    {Array.from(new Set(tournaments.flatMap((t) => t.organizerNames))).map((organizer) => (
+                        <option key={organizer} value={organizer}>
+                            {organizer}
+                        </option>
+                    ))}
+                </select>
+
+                {/* Rank Filter */}
+                <select
+                    value={filterRank}
+                    onChange={(e) => setFilterRank(e.target.value)}
+                    className="px-4 py-2 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-600"
+                >
+                    <option value="">All Ranks</option>
+                    <option value="D">D</option>
+                    <option value="C">C</option>
+                    <option value="B">B</option>
+                    <option value="A">A</option>
+                    <option value="S">S</option>
+                </select>
+            </div>
+
+            {/* Tournaments List */}
             {filteredTournaments.length > 0 ? (
                 <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {filteredTournaments.map((tournament) => {
-                        const maxTeamsOrPlayers = tournament.maxTeams || 0; // Total slots
-                        const currentParticipants = tournament.participatingIds?.length || 0; // Slots filled
-                        const availableSlots = maxTeamsOrPlayers - currentParticipants; // Remaining slots
+                        const maxTeamsOrPlayers = tournament.maxTeams || 0;
+                        const currentParticipants = tournament.participatingIds?.length || 0;
+                        const availableSlots = maxTeamsOrPlayers - currentParticipants;
 
                         return (
                             <li
                                 key={tournament.id}
                                 className="bg-gray-900 rounded-lg shadow-lg flex flex-col overflow-hidden"
                             >
-                                {/* Tournament Image */}
                                 <div className="w-full h-48 bg-gray-700 flex items-center justify-center overflow-hidden">
                                     {tournament.image ? (
                                         <img
@@ -190,33 +254,27 @@ const TournamentExplore = () => {
                                     )}
                                 </div>
 
-                                {/* Tournament Details */}
                                 <div className="p-4">
                                     <h2 className="text-lg font-bold">{tournament.name}</h2>
                                     <p className="text-sm">{tournament.description}</p>
                                     <p>Type: {tournament.type}</p>
                                     <p>Game: {tournament.gameName}</p>
-                                    <p>
-                                        Rank: {tournament.minRankRequirement} - {tournament.maxRankRequirement}
-                                    </p>
-                                    <p>Trust Factor: {tournament.trustFactorRequirement}</p>
-                                    <p>Cash Prize: ${tournament.cashPrize}</p>
-                                    <p>Reputation: {tournament.reputation}</p>
                                     <p>Rank: {tournament.rank}</p>
+                                    <p>Date: {new Date(tournament.date).toLocaleDateString()}</p>
                                     <p>Status: {tournament.status}</p>
                                     <p>
-                                        {tournament.type === 'team' ? 'Teams' : 'Players'}: {currentParticipants} / {maxTeamsOrPlayers}
+                                        {tournament.type === 'team' ? 'Teams' : 'Players'}: {currentParticipants} /{' '}
+                                        {maxTeamsOrPlayers}
                                     </p>
                                     {availableSlots > 0 ? (
                                         <p className="text-green-500">
-                                            {availableSlots} {tournament.type === 'team' ? 'slots for teams' : 'slots for players'} available
+                                            {availableSlots} slots available
                                         </p>
                                     ) : (
                                         <p className="text-red-500">Tournament is full</p>
                                     )}
                                 </div>
 
-                                {/* Actions */}
                                 <div className="flex p-4 space-x-2">
                                     <Link
                                         to={`/tournament/explore/${tournament.id}`}
@@ -256,7 +314,7 @@ const TournamentExplore = () => {
                     })}
                 </ul>
             ) : (
-                <p className="text-center">No tournaments found matching your search.</p>
+                <p className="text-center">No tournaments found matching your filters.</p>
             )}
         </div>
     );

@@ -39,6 +39,9 @@ const Header = () => {
                     <Link to="/games" className="text-lg hover:underline">
                         Games
                     </Link>
+                    <Link to="/teams" className="text-lg hover:underline">
+                        Teams
+                    </Link>
                 </div>
 
                 {/* Profile and Dropdown */}
