@@ -31,12 +31,24 @@ const GameCreate = () => {
             alert("Game type is required.");
             return;
         }
-        if (!yearOfExistence || isNaN(yearOfExistence)) {
+        if (!description.trim()) {
+            alert("Game description is required.");
+            return;
+        }
+        if (!yearOfExistence || isNaN(yearOfExistence) || yearOfExistence <= 0) {
             alert("Valid year of existence is required.");
             return;
         }
-        if (!maxPlayers || isNaN(maxPlayers)) {
+        if (!maxPlayers || isNaN(maxPlayers) || maxPlayers <= 0) {
             alert("Valid max players per team is required.");
+            return;
+        }
+        if (!publisher.trim()) {
+            alert("Publisher is required.");
+            return;
+        }
+        if (!gameImage) {
+            alert("Please upload a game image.");
             return;
         }
 
