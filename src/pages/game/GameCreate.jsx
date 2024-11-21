@@ -10,6 +10,7 @@ const GameCreate = () => {
     const [maxPlayers, setMaxPlayers] = useState("");
     const [yearOfExistence, setYearOfExistence] = useState("");
     const [publisher, setPublisher] = useState("");
+    const [platforms, setPlatforms] = useState([]); // Platforms array
     const [gameImage, setGameImage] = useState(null);
     const navigate = useNavigate();
 
@@ -20,6 +21,12 @@ const GameCreate = () => {
             reader.onload = () => setGameImage(reader.result.split(",")[1]);
             reader.readAsDataURL(file);
         }
+    };
+
+    const togglePlatform = (platform) => {
+        setPlatforms((prev) =>
+            prev.includes(platform) ? prev.filter((p) => p !== platform) : [...prev, platform]
+        );
     };
 
     const handleCreateGame = async () => {
@@ -47,6 +54,10 @@ const GameCreate = () => {
             alert("Publisher is required.");
             return;
         }
+        if (platforms.length === 0) {
+            alert("Please select at least one platform.");
+            return;
+        }
         if (!gameImage) {
             alert("Please upload a game image.");
             return;
@@ -60,6 +71,7 @@ const GameCreate = () => {
                 maxPlayersPerTeam: parseInt(maxPlayers),
                 yearOfExistence: parseInt(yearOfExistence),
                 publisher,
+                platforms, // Platforms array
                 gameImage,
             };
 
@@ -129,6 +141,43 @@ const GameCreate = () => {
                     onChange={(e) => setPublisher(e.target.value)}
                     className="w-full p-2 rounded bg-gray-700 text-white"
                 />
+                <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Platforms (Select one or more):
+                    </label>
+                    <div className="flex gap-4">
+                        <label>
+                            <input
+                                type="checkbox"
+                                value="PC"
+                                checked={platforms.includes("PC")}
+                                onChange={() => togglePlatform("PC")}
+                                className="mr-2"
+                            />
+                            PC
+                        </label>
+                        <label>
+                            <input
+                                type="checkbox"
+                                value="PlayStation"
+                                checked={platforms.includes("PlayStation")}
+                                onChange={() => togglePlatform("PlayStation")}
+                                className="mr-2"
+                            />
+                            PlayStation
+                        </label>
+                        <label>
+                            <input
+                                type="checkbox"
+                                value="Xbox"
+                                checked={platforms.includes("Xbox")}
+                                onChange={() => togglePlatform("Xbox")}
+                                className="mr-2"
+                            />
+                            Xbox
+                        </label>
+                    </div>
+                </div>
                 <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">
                         Upload an image for the game (e.g., logo or cover art):
