@@ -19,6 +19,8 @@ import TeamExplore from "./pages/team/TeamExplore.jsx";
 import TeamCreate from "./pages/team/TeamCreate.jsx";
 import GameExplore from "./pages/game/GameExplore.jsx";
 import GameCreate from "./pages/game/GameCreate.jsx";
+import GameModify from "./pages/game/GameModify.jsx";
+import GameDetails from "./pages/game/GameDetails.jsx";
 
 function App() {
     const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
@@ -44,6 +46,8 @@ function App() {
                         <Route path="/games" element={<Games />} />
                         <Route path="/games/explore" element={<GameExplore />}></Route>
                         <Route path="/games/create" element={<GameCreate/>}></Route>
+                        <Route path="/games/:gameId/edit" element={<GameModify/>}></Route>
+                        <Route path="/games/:gameId" element={<GameDetails />} />
                         <Route path="/teams" element={<Teams />} />
                         <Route path="/teams/explore" element={<TeamExplore />} />
                         <Route path="/teams/create" element={<TeamCreate />} />

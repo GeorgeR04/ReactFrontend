@@ -37,7 +37,7 @@ const TeamExplore = () => {
                 setPlayerTeam(memberTeam || null);
             }
 
-            const gamesResponse = await fetch('http://localhost:8080/api/games');
+            const gamesResponse = await fetch('http://localhost:8080/api/games/list');
             if (!gamesResponse.ok) {
                 throw new Error('Failed to fetch games');
             }

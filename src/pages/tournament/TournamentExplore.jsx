@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AuthContext } from '../../security/AuthContext.jsx'; // Adjust the import path based on your project structure
+import { AuthContext } from '../../security/AuthContext.jsx';
 
 const TournamentExplore = () => {
     const [tournaments, setTournaments] = useState([]);
@@ -8,7 +8,7 @@ const TournamentExplore = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
 
-    // New state for filters
+
     const [filterDate, setFilterDate] = useState('');
     const [filterType, setFilterType] = useState('');
     const [filterOrganizer, setFilterOrganizer] = useState('');
@@ -25,7 +25,7 @@ const TournamentExplore = () => {
             if (tournamentsResponse.ok) {
                 const tournamentsData = await tournamentsResponse.json();
                 setTournaments(tournamentsData);
-                setFilteredTournaments(tournamentsData); // Initialize filtered list
+                setFilteredTournaments(tournamentsData);
             } else {
                 console.error('Failed to fetch tournaments.');
             }
@@ -40,7 +40,7 @@ const TournamentExplore = () => {
         fetchTournaments();
     }, []);
 
-    // Update filtered tournaments based on search query and filters
+
     useEffect(() => {
         const results = tournaments.filter((tournament) => {
             const matchesSearchQuery = tournament.name.toLowerCase().includes(searchQuery.toLowerCase());
@@ -124,7 +124,7 @@ const TournamentExplore = () => {
 
             if (response.ok) {
                 alert('Tournament deleted successfully.');
-                fetchTournaments(); // Refresh the list after deletion
+                fetchTournaments();
             } else {
                 alert('Failed to delete the tournament.');
             }
@@ -181,7 +181,6 @@ const TournamentExplore = () => {
 
             {/* Filter Options */}
             <div className="flex flex-wrap justify-center mb-6 gap-4">
-                {/* Date Filter */}
                 <input
                     type="date"
                     value={filterDate}

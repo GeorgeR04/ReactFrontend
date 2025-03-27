@@ -2,19 +2,19 @@ import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../security/AuthContext.jsx";
 
-const GameCreate = () => {
+const GameSuggest = () => {
     const { token, user } = useContext(AuthContext);
+    const navigate = useNavigate();
+
     const [name, setName] = useState("");
     const [type, setType] = useState("");
     const [description, setDescription] = useState("");
     const [rules, setRules] = useState("");
-    const [tutorial, setTutorial] = useState("");
     const [maxPlayers, setMaxPlayers] = useState("");
     const [yearOfExistence, setYearOfExistence] = useState("");
     const [publisher, setPublisher] = useState("");
     const [platforms, setPlatforms] = useState([]);
     const [gameImage, setGameImage] = useState(null);
-    const navigate = useNavigate();
 
     const handleImageChange = (e) => {
         const file = e.target.files[0];
@@ -31,7 +31,7 @@ const GameCreate = () => {
         );
     };
 
-    const handleCreateGame = async () => {
+    const handleSuggestGame = async () => {
         if (!name.trim()) {
             alert("Game name is required.");
             return;
@@ -71,7 +71,6 @@ const GameCreate = () => {
                 type,
                 description,
                 rules,
-                tutorial,
                 maxPlayersPerTeam: parseInt(maxPlayers),
                 yearOfExistence: parseInt(yearOfExistence),
                 publisher,
@@ -79,7 +78,7 @@ const GameCreate = () => {
                 gameImage,
             };
 
-            const response = await fetch("http://localhost:8080/api/games/create", {
+            const response = await fetch("http://localhost:8080/api/games/suggest", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -89,20 +88,20 @@ const GameCreate = () => {
             });
 
             if (response.ok) {
-                alert("Game created successfully!");
+                alert("Game suggestion submitted successfully! It will be reviewed by organisers.");
                 navigate("/games/explore");
             } else {
                 const errorText = await response.text();
-                alert(`Failed to create game: ${errorText}`);
+                alert(`Failed to submit suggestion: ${errorText}`);
             }
         } catch (err) {
-            alert("An error occurred while creating the game.");
+            alert("An error occurred while submitting your suggestion.");
         }
     };
 
     return (
         <div className="min-h-screen bg-gray-800 text-white p-8">
-            <h1 className="text-4xl font-bold mb-8 text-center">Create Game</h1>
+            <h1 className="text-4xl font-bold mb-8 text-center">Suggest a New Game</h1>
             <div className="max-w-xl mx-auto space-y-4">
                 <input
                     type="text"
@@ -125,16 +124,9 @@ const GameCreate = () => {
                     className="w-full p-2 rounded bg-gray-700 text-white"
                 />
                 <textarea
-                    placeholder="Game Rules"
+                    placeholder="Game Rules (optional)"
                     value={rules}
                     onChange={(e) => setRules(e.target.value)}
-                    className="w-full p-2 rounded bg-gray-700 text-white"
-                />
-                <input
-                    type="text"
-                    placeholder="Tutorial Video URL or Guide"
-                    value={tutorial}
-                    onChange={(e) => setTutorial(e.target.value)}
                     className="w-full p-2 rounded bg-gray-700 text-white"
                 />
                 <input
@@ -163,36 +155,18 @@ const GameCreate = () => {
                         Platforms (Select one or more):
                     </label>
                     <div className="flex gap-4">
-                        <label>
-                            <input
-                                type="checkbox"
-                                value="PC"
-                                checked={platforms.includes("PC")}
-                                onChange={() => togglePlatform("PC")}
-                                className="mr-2"
-                            />
-                            PC
-                        </label>
-                        <label>
-                            <input
-                                type="checkbox"
-                                value="PlayStation"
-                                checked={platforms.includes("PlayStation")}
-                                onChange={() => togglePlatform("PlayStation")}
-                                className="mr-2"
-                            />
-                            PlayStation
-                        </label>
-                        <label>
-                            <input
-                                type="checkbox"
-                                value="Xbox"
-                                checked={platforms.includes("Xbox")}
-                                onChange={() => togglePlatform("Xbox")}
-                                className="mr-2"
-                            />
-                            Xbox
-                        </label>
+                        {["PC", "PlayStation", "Xbox"].map((platform) => (
+                            <label key={platform}>
+                                <input
+                                    type="checkbox"
+                                    value={platform}
+                                    checked={platforms.includes(platform)}
+                                    onChange={() => togglePlatform(platform)}
+                                    className="mr-2"
+                                />
+                                {platform}
+                            </label>
+                        ))}
                     </div>
                 </div>
                 <div>
@@ -208,10 +182,10 @@ const GameCreate = () => {
                 </div>
                 <div className="flex gap-4 mt-8">
                     <button
-                        onClick={handleCreateGame}
-                        className="flex-1 p-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded"
+                        onClick={handleSuggestGame}
+                        className="flex-1 p-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded"
                     >
-                        Create Game
+                        Submit Suggestion
                     </button>
                     <button
                         onClick={() => navigate("/games/explore")}
@@ -225,4 +199,4 @@ const GameCreate = () => {
     );
 };
 
-export default GameCreate;
+export default GameSuggest;

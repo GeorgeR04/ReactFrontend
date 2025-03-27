@@ -15,6 +15,7 @@ const GameModify = () => {
         yearOfExistence: "",
         publisher: "",
         platforms: [],
+        tutorial: "" // New field for tutorial
     });
 
     const handleInputChange = (e) => {
@@ -75,6 +76,15 @@ const GameModify = () => {
             console.error("Error updating game:", err);
         }
     };
+
+    const handlegoback = () => {
+        navigate(-1);
+    };
+
+    // Determine if the logged-in user can modify the tutorial.
+    const canModifyTutorial =
+        user?.role === "moderator" ||
+        (user?.role === "organizer" && game.organizerId === user?.userId.toString());
 
     return (
         <div className="min-h-screen bg-gray-800 text-white p-8">
@@ -141,11 +151,28 @@ const GameModify = () => {
                         </label>
                     ))}
                 </div>
+                {/* Tutorial field shown only if the user is allowed */}
+                {canModifyTutorial && (
+                    <input
+                        type="text"
+                        name="tutorial"
+                        placeholder="Tutorial URL or Guide"
+                        value={game.tutorial}
+                        onChange={handleInputChange}
+                        className="w-full p-2 rounded bg-gray-700 text-white"
+                    />
+                )}
                 <button
                     onClick={handleSaveChanges}
                     className="w-full p-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded"
                 >
                     Save Changes
+                </button>
+                <button
+                    onClick={handlegoback}
+                    className="w-full p-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded"
+                >
+                    Back to Menu
                 </button>
             </div>
         </div>
