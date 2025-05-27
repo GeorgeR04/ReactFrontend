@@ -80,7 +80,7 @@ const GameExplore = () => {
     };
 
     const isGameOwnerOrModerator = (game) =>
-        user?.role === "moderator" || game.organizerId === user?.userId;
+        user?.role === "organizer_moderator" || user?.role === "moderator" || game.organizerId === user?.userId;
 
     return (
         <div className="min-h-screen bg-gray-800 text-white p-8">
@@ -88,7 +88,7 @@ const GameExplore = () => {
             {error && <p className="text-red-500 text-center">{error}</p>}
 
             {/* Add New Game Button for Organisers/Moderators */}
-            {user?.role && (user.role === "organizer" || user.role === "moderator") && (
+            {user?.role && (user?.role === "organizer_moderator" || user.role === "organizer" || user.role === "moderator") && (
                 <div className="mb-6 text-right">
                     <button
                         onClick={handleAddGame}

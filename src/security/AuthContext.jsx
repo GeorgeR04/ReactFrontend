@@ -47,10 +47,12 @@ export const AuthProvider = ({ children }) => {
             if (response.ok) {
                 const profileData = await response.json();
                 const userData = {
+                    id: profileData.id,
                     username: profileData.username,
                     role: profileData.role,
                     specialization: profileData.specialization,
                     game: profileData.game,
+                    profileImage: profileData.profileImage
                 };
                 setUser(userData);
                 sessionStorage.setItem('user', JSON.stringify(userData));

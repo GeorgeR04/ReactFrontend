@@ -83,7 +83,7 @@ const GameModify = () => {
 
     // Determine if the logged-in user can modify the tutorial.
     const canModifyTutorial =
-        user?.role === "moderator" ||
+         user?.role === "organizer_moderator" || user?.role === "moderator" ||
         (user?.role === "organizer" && game.organizerId === user?.userId.toString());
 
     return (

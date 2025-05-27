@@ -67,7 +67,7 @@ const Tournament = () => {
 
                     {/* Explore Button */}
                     <Link
-                        to="/tournament/explore"
+                        to="/tournament/gem"
                         className="mt-6 inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg"
                     >
                         Explore

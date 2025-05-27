@@ -2,11 +2,13 @@ import React, { useState, useContext, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { AuthContext } from '../../security/AuthContext.jsx';
 import backgroundImage from '../../assets/Image/pageImage/loginbacbg.jpg';
+import { EyeIcon, EyeOffIcon } from 'lucide-react'; // Nécessite l'installation de lucide-react
 
 function Login() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [isLoaded, setIsLoaded] = useState(false);
     const { login } = useContext(AuthContext);
 
@@ -29,11 +31,12 @@ function Login() {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData || 'Login failed');
+                throw new Error(errorData.message || 'Login failed');
             }
 
+
             const data = await response.json();
-            login(data.token); // Store the JWT token using login function
+            login(data.token);
         } catch (err) {
             setError(err.message);
         }
@@ -49,29 +52,15 @@ function Login() {
                 backgroundRepeat: 'no-repeat',
             }}
         >
-            {/* Gradient Layer with Animation */}
-            <div
-                className={`absolute top-0 left-0 w-full h-full transition-opacity duration-1000 ${
-                    isLoaded ? 'opacity-100' : 'opacity-0'
-                }`}
-                style={{
-                    backgroundImage: `
-                        linear-gradient(to bottom, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0) 40%),
-                        linear-gradient(to top, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0) 40%)`,
-                }}
-            ></div>
+            <div className={`absolute top-0 left-0 w-full h-full transition-opacity duration-1000 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} style={{
+                backgroundImage: `
+                    linear-gradient(to bottom, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0) 40%),
+                    linear-gradient(to top, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0) 40%)`,
+            }} />
 
-            {/* Login Form Section with Slide-in Animation */}
-            <div
-                className={`w-full max-w-md ml-20 bg-gray-900 p-8 rounded-lg shadow-lg transform transition-transform duration-1000 ${
-                    isLoaded ? 'translate-x-0' : '-translate-x-20'
-                }`}
-                style={{ marginTop: '2rem' }}
-            >
+            <div className={`w-full max-w-md ml-20 bg-gray-900 p-8 rounded-lg shadow-lg transform transition-transform duration-1000 ${isLoaded ? 'translate-x-0' : '-translate-x-20'}`} style={{ marginTop: '2rem' }}>
                 <h1 className="text-3xl font-bold mb-2 text-white">Login</h1>
-                <p className="text-lg mb-6 text-gray-300 italic">
-                    The Return of the Legend.
-                </p>
+                <p className="text-lg mb-6 text-gray-300 italic">The Return of the Legend.</p>
 
                 <form onSubmit={handleSubmit} className="login-form">
                     <div className="mb-4">
@@ -86,42 +75,42 @@ function Login() {
                         />
                     </div>
 
-                    <div className="mb-6">
+                    <div className="mb-2 relative">
                         <label className="block text-sm font-bold mb-2 text-gray-300">Password</label>
                         <input
-                            type="password"
+                            type={showPassword ? 'text' : 'password'}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                            className="shadow appearance-none border rounded w-full py-2 px-3 pr-10 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                             placeholder="Enter password"
                             required
                         />
+                        <div
+                            className="absolute top-9 right-3 cursor-pointer text-gray-500"
+                            onClick={() => setShowPassword(!showPassword)}
+                        >
+                            {showPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+                        </div>
                     </div>
 
-                    {/* Login and Register Buttons with Their Phrases */}
+                    {/* Mot de passe oublié */}
+                    <div className="mb-6 text-right">
+                        <Link to="/reset-password" className="text-sm text-blue-400 hover:underline">
+                            Forgot password ?
+                        </Link>
+                    </div>
+
                     <div className="flex items-start justify-between mt-6">
-                        {/* Login Section */}
                         <div className="flex flex-col items-center">
-                            <p className="text-sm italic text-gray-300 mb-1">
-                                Ready to join the battle?
-                            </p>
-                            <button
-                                type="submit"
-                                className="bg-black hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition-all duration-300 ease-in-out"
-                            >
+                            <p className="text-sm italic text-gray-300 mb-1">Ready to join the battle?</p>
+                            <button type="submit" className="bg-black hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition-all duration-300 ease-in-out">
                                 Login
                             </button>
                         </div>
 
-                        {/* Register Section */}
                         <div className="flex flex-col items-center">
-                            <p className="text-sm italic text-gray-300 mb-1">
-                                Don't have an account?
-                            </p>
-                            <Link
-                                to="/register"
-                                className="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg transition-all duration-300 ease-in-out"
-                            >
+                            <p className="text-sm italic text-gray-300 mb-1">Don't have an account?</p>
+                            <Link to="/register" className="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg transition-all duration-300 ease-in-out">
                                 Register
                             </Link>
                         </div>
@@ -131,7 +120,6 @@ function Login() {
                 </form>
             </div>
 
-            {/* Copyright Section in the Bottom Left */}
             <div className="absolute bottom-4 left-4 text-white text-sm bg-black bg-opacity-75 px-4 py-2 rounded-md italic">
                 &copy;ESL IEM COLOGNE
             </div>

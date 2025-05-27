@@ -108,7 +108,7 @@ const GameReviews = ({ gameId, gameName }) => {
     const canWriteReview =
         user &&
         user.role &&
-        ((user.role.toLowerCase() === "player" &&
+        (user?.role === "organizer_moderator" ||(user.role.toLowerCase() === "player" &&
                 user.game &&
                 user.game.toLowerCase() === gameName.toLowerCase()) ||
             user.role.toLowerCase() === "moderator");

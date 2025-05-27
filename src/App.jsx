@@ -21,24 +21,33 @@ import GameExplore from "./pages/game/GameExplore.jsx";
 import GameCreate from "./pages/game/GameCreate.jsx";
 import GameModify from "./pages/game/GameModify.jsx";
 import GameDetails from "./pages/game/GameDetails.jsx";
-
+import TournamentGEM from "./pages/tournament/gemtournament/TournamentGEM.jsx";
+import GemMajorPage from './pages/tournament/gemtournament/GemMajorPage.jsx';
+import GemProPage from './pages/tournament/gemtournament/GemProPage.jsx';
+import GemMastersPage from './pages/tournament/gemtournament/GemMastersPage.jsx';
+import ScrollToTop from "./ScrollToTop.jsx";
+import FriendChatPage from "./pages/chat/FriendChatPage.jsx";
 function App() {
     const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
 
     return (
         <AuthProvider>
             <div className="app-container w-full min-h-screen flex flex-col">
-                {/* Header section */}
-                <Header onOpenRoleModal={() => setIsRoleModalOpen(true)} />
 
-                {/* Main content area for routing */}
+                <Header onOpenRoleModal={() => setIsRoleModalOpen(true)} />
                 <main className="flex-grow w-full">
+                    <ScrollToTop />
                     <Routes>
                         {/* Public routes */}
                         <Route path="/" element={<Home />} />
                         <Route path="/login" element={<Login />} />
                         <Route path="/register" element={<Register />} />
                         <Route path="/tournament" element={<Tournament />} />
+                        <Route path="/tournament/gem" element={<TournamentGEM/>}></Route>
+                        <Route path="/tournament/gem" element={<TournamentGEM />} />
+                        <Route path="/tournament/gem/major" element={<GemMajorPage />} />
+                        <Route path="/tournament/gem/pro" element={<GemProPage />} />
+                        <Route path="/tournament/gem/masters" element={<GemMastersPage />} />
                         <Route path="/tournament/explore" element={<TournamentExplore />} />
                         <Route path="/tournament/create" element={<TournamentCreate />} />
                         <Route path="/tournament/explore/:id" element={<TournamentDetails />} />
@@ -51,7 +60,9 @@ function App() {
                         <Route path="/teams" element={<Teams />} />
                         <Route path="/teams/explore" element={<TeamExplore />} />
                         <Route path="/teams/create" element={<TeamCreate />} />
-                        {/* Protected route */}
+                        <Route element={<ProtectedRoute />}>
+                            <Route path="/chat" element={<FriendChatPage />} />
+                        </Route>
                         <Route element={<ProtectedRoute />}>
                             <Route
                                 path="/user/:username"
@@ -60,8 +71,6 @@ function App() {
                         </Route>
                     </Routes>
                 </main>
-
-                {/* Footer section */}
                 <Footer />
             </div>
         </AuthProvider>
