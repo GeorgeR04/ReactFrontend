@@ -107,13 +107,28 @@ const TournamentGEM = () => {
                                 section.layout === 'right' ? 'md:flex-row-reverse' : ''
                             }`}
                         >
-                            {/* Logo */}
-                            <img src={section.logo} alt="logo" className="w-48 h-48 object-contain mb-6 md:mb-0" />
-
-                            {/* Text */}
+                            <img
+                                src={section.logo}
+                                alt="logo"
+                                className={`w-48 h-48 object-contain mb-6 md:mb-0 transition-all duration-700 transform ${
+                                    isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
+                                }`}
+                            />
                             <div className="max-w-xl md:px-8">
-                                <h2 className="text-4xl font-bold mb-4">{section.title}</h2>
-                                <p className="text-lg mb-6">{section.description}</p>
+                                <h2
+                                    className={`text-4xl font-bold mb-4 transition-all duration-700 transform ${
+                                        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
+                                    }`}
+                                >
+                                    {section.title}
+                                </h2>
+                                <p
+                                    className={`text-lg mb-6 transition-all duration-700 delay-150 transform ${
+                                        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
+                                    }`}
+                                >
+                                    {section.description}
+                                </p>
                                 <button
                                     onClick={() => {
                                         if (section.line === 'GEM') navigate('/tournament/gem/major');
@@ -121,14 +136,12 @@ const TournamentGEM = () => {
                                         else if (section.line === 'MASTERS') navigate('/tournament/gem/masters');
                                         else navigate('/tournament/explore?line=OTHER');
                                     }}
-                                    className="bg-indigo-600 hover:bg-indigo-700 px-6 py-2 rounded text-white font-bold transition"
+                                    className="bg-indigo-600 hover:bg-indigo-700 px-6 py-2 rounded text-white font-bold transition-transform duration-300 transform hover:scale-105"
                                 >
                                     Explore
                                 </button>
                             </div>
                         </div>
-
-                        {/* Gradient Overlay */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black opacity-60"></div>
                     </section>
                 );

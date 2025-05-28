@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '../../../security/AuthContext.jsx';
+import { CheckCircle, XCircle } from 'lucide-react';
 
 const PendingFriendRequestsPanel = () => {
     const { user, token } = useContext(AuthContext);
@@ -26,7 +27,7 @@ const PendingFriendRequestsPanel = () => {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${getCleanToken()}`
                 },
-                body: '{}' // PATCH/POST with body sometimes requires this
+                body: '{}' // Required for POST
             });
             fetchRequests();
         } catch (err) {
@@ -41,29 +42,39 @@ const PendingFriendRequestsPanel = () => {
     if (!user || !token) return null;
 
     return (
-        <div className="bg-gray-800 p-4 text-white rounded">
-            <h2 className="text-lg font-bold mb-3">Pending Friend Requests</h2>
-            <ul>
-                {requests.map((r) => (
-                    <li key={r.id} className="flex justify-between items-center mb-2 p-2 bg-gray-700 rounded">
-                        <div>{r.sender.username}</div>
-                        <div className="space-x-2">
-                            <button
-                                className="px-2 py-1 bg-green-600 hover:bg-green-700 rounded"
-                                onClick={() => respond(r.id, true)}
-                            >
-                                Accept
-                            </button>
-                            <button
-                                className="px-2 py-1 bg-red-600 hover:bg-red-700 rounded"
-                                onClick={() => respond(r.id, false)}
-                            >
-                                Decline
-                            </button>
-                        </div>
-                    </li>
-                ))}
-            </ul>
+        <div className="bg-gray-800 p-4 mt-4 text-white rounded-xl shadow">
+            <h2 className="text-xl font-semibold mb-4">Pending Friend Requests</h2>
+            {requests.length === 0 ? (
+                <p className="text-sm text-gray-400">No pending requests</p>
+            ) : (
+                <ul className="space-y-3">
+                    {requests.map((r) => (
+                        <li key={r.id} className="flex justify-between items-center p-3 bg-gray-700 rounded-2xl hover:bg-gray-600 transition">
+                            <div className="flex items-center gap-4">
+                                <img src={`data:image/jpeg;base64,${r.sender.profileImage}`} alt="avatar" className="w-10 h-10 rounded-full" />
+                                <div>
+                                    <p className="font-semibold">{r.sender.username} <span className="text-xs text-gray-400">({r.sender.role})</span></p>
+                                    <p className="text-xs text-gray-300">{r.sender.firstname} {r.sender.lastname}</p>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => respond(r.id, true)}
+                                    className="flex items-center gap-1 bg-green-600 hover:bg-green-700 px-3 py-1 rounded-md text-sm"
+                                >
+                                    <CheckCircle className="w-4 h-4" /> Accept
+                                </button>
+                                <button
+                                    onClick={() => respond(r.id, false)}
+                                    className="flex items-center gap-1 bg-red-600 hover:bg-red-700 px-3 py-1 rounded-md text-sm"
+                                >
+                                    <XCircle className="w-4 h-4" /> Decline
+                                </button>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+            )}
         </div>
     );
 };

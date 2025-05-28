@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '../../../security/AuthContext.jsx';
+import { CheckCircle, XCircle } from 'lucide-react';
 
 const ReceivedRequestsPanel = () => {
     const { user, token } = useContext(AuthContext);
@@ -26,9 +27,10 @@ const ReceivedRequestsPanel = () => {
                 headers: {
                     'Content-Type': 'application/json',
                     Authorization: `Bearer ${getCleanToken()}`
-                }
+                },
+                body: '{}'
             });
-            fetchRequests(); // refresh after response
+            fetchRequests();
         } catch (err) {
             console.error('Failed to respond to request', err);
         }
@@ -41,27 +43,40 @@ const ReceivedRequestsPanel = () => {
     if (!user || !token) return null;
 
     return (
-        <div className="bg-gray-800 p-4 mt-4 text-white rounded">
-            <h2 className="font-bold mb-2">Friend Requests</h2>
+        <div className="bg-gray-800 p-4 mt-4 text-white rounded-xl shadow-lg">
+            <h2 className="text-xl font-semibold mb-4">Incoming Friend Requests</h2>
             {requests.length === 0 ? (
                 <p className="text-sm text-gray-400">No incoming requests</p>
             ) : (
-                <ul className="space-y-2">
+                <ul className="space-y-3">
                     {requests.map(r => (
-                        <li key={r.id} className="bg-gray-700 p-2 rounded flex justify-between items-center">
-                            <span>{r.sender.username}</span>
-                            <div className="space-x-2">
+                        <li
+                            key={r.id}
+                            className="bg-gray-700 rounded-2xl p-3 flex justify-between items-center hover:bg-gray-600 transition"
+                        >
+                            <div className="flex items-center gap-4">
+                                <img
+                                    src={`data:image/jpeg;base64,${r.sender.profileImage}`}
+                                    alt="avatar"
+                                    className="w-10 h-10 rounded-full"
+                                />
+                                <div>
+                                    <p className="font-semibold">{r.sender.username} <span className="text-xs text-gray-400">({r.sender.role})</span></p>
+                                    <p className="text-xs text-gray-300">{r.sender.firstname} {r.sender.lastname}</p>
+                                </div>
+                            </div>
+                            <div className="flex gap-2">
                                 <button
-                                    className="bg-green-600 px-3 py-1 rounded"
                                     onClick={() => respondToRequest(r.id, true)}
+                                    className="flex items-center gap-1 bg-green-600 hover:bg-green-700 px-3 py-1 rounded-md text-sm"
                                 >
-                                    Accept
+                                    <CheckCircle className="w-4 h-4" /> Accept
                                 </button>
                                 <button
-                                    className="bg-red-600 px-3 py-1 rounded"
                                     onClick={() => respondToRequest(r.id, false)}
+                                    className="flex items-center gap-1 bg-red-600 hover:bg-red-700 px-3 py-1 rounded-md text-sm"
                                 >
-                                    Reject
+                                    <XCircle className="w-4 h-4" /> Reject
                                 </button>
                             </div>
                         </li>

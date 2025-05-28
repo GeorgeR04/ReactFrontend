@@ -92,6 +92,14 @@ const Header = () => {
                                     >
                                         Go to Profile
                                     </button>
+                                    {token && user && (
+                                        <button
+                                            onClick={() => navigate('/chat')}
+                                            className="block px-4 py-2 w-full text-left transition duration-200 hover:bg-pink-600 hover:text-white hover:pl-5"
+                                        >
+                                            Chat
+                                        </button>
+                                    )}
                                     {user?.role !== 'moderator' && (
                                         <button
                                             className="block px-4 py-2 w-full text-left transition duration-200 hover:bg-purple-600 hover:text-white hover:pl-5"
@@ -106,14 +114,6 @@ const Header = () => {
                                     >
                                         Logout
                                     </button>
-                                    {token && user && (
-                                        <button
-                                            onClick={() => navigate('/chat')}
-                                            className="block px-4 py-2 w-full text-left transition duration-200 hover:bg-pink-600 hover:text-white hover:pl-5"
-                                        >
-                                            Chat
-                                        </button>
-                                    )}
                                 </div>
                             )}
                         </>

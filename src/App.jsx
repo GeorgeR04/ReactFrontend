@@ -27,6 +27,7 @@ import GemProPage from './pages/tournament/gemtournament/GemProPage.jsx';
 import GemMastersPage from './pages/tournament/gemtournament/GemMastersPage.jsx';
 import ScrollToTop from "./ScrollToTop.jsx";
 import FriendChatPage from "./pages/chat/FriendChatPage.jsx";
+import OrganizationExplore from "./pages/organization/OrganizationExplore.jsx";
 function App() {
     const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
 
@@ -60,6 +61,7 @@ function App() {
                         <Route path="/teams" element={<Teams />} />
                         <Route path="/teams/explore" element={<TeamExplore />} />
                         <Route path="/teams/create" element={<TeamCreate />} />
+                        <Route path="/organizations/explore" element={<OrganizationExplore />} />
                         <Route element={<ProtectedRoute />}>
                             <Route path="/chat" element={<FriendChatPage />} />
                         </Route>

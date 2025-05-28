@@ -1,77 +1,91 @@
+// src/pages/Team.jsx
 import React, { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import BackgroundImage from '../../assets/Image/teamsimage.jpg';
 
 const Team = () => {
     const contentRef = useRef(null);
-    const [isVisible, setIsVisible] = useState(false);
-    const [hasSlidOut, setHasSlidOut] = useState(false);
+    const [showTitle, setShowTitle] = useState(false);
+    const [showText1, setShowText1] = useState(false);
+    const [showText2, setShowText2] = useState(false);
 
     useEffect(() => {
-        const handleScroll = () => {
-            if (contentRef.current) {
-                const rect = contentRef.current.getBoundingClientRect();
-                if (rect.top < window.innerHeight && rect.bottom > 0) {
-                    setIsVisible(true);
-                    setHasSlidOut(false);
-                } else if (rect.bottom < 0) {
-                    setIsVisible(false);
-                    setHasSlidOut(true);
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setTimeout(() => setShowTitle(true), 100);
+                    setTimeout(() => setShowText1(true), 400);
+                    setTimeout(() => setShowText2(true), 800);
                 }
-            }
-        };
+            },
+            { threshold: 0.3 }
+        );
 
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
+        if (contentRef.current) observer.observe(contentRef.current);
+        return () => {
+            if (contentRef.current) observer.unobserve(contentRef.current);
+        };
     }, []);
 
     return (
         <div
-            className="relative min-h-screen flex flex-col items-center justify-center bg-cover bg-center overflow-hidden"
+            className="relative min-h-screen flex items-center justify-center bg-cover bg-center"
             style={{
-                backgroundImage: `url(${BackgroundImage})`,
+                backgroundImage: `
+          linear-gradient(to bottom, rgba(0,0,0,0.9), rgba(0,0,0,0.6)),
+          url(${BackgroundImage})
+        `,
             }}
         >
-            {/* Black Gradient Overlays */}
-            <div className="absolute top-0 left-0 w-full h-1/4 bg-gradient-to-b from-black to-transparent"></div>
-            <div className="absolute bottom-0 left-0 w-full h-1/4 bg-gradient-to-t from-black to-transparent"></div>
+            <div className="absolute inset-0 bg-black bg-opacity-30" />
 
-            {/* Content Section */}
             <div
                 ref={contentRef}
-                className={`relative z-10 text-center text-white p-8 bg-black bg-opacity-50 rounded-lg shadow-lg w-3/4 transition-all duration-1000 transform ${
-                    isVisible
-                        ? 'translate-y-0 opacity-100'
-                        : hasSlidOut
-                            ? 'translate-y-20 opacity-0'
-                            : ''
-                }`}
+                className="relative z-10 max-w-3xl text-center p-8 rounded-lg bg-black bg-opacity-70 backdrop-blur-md shadow-lg"
             >
-                <h2 className="text-5xl font-extrabold mb-6">Team</h2>
-                <p className="text-lg mb-4">
-                    Welcome to the Team page! Discover, join, or create your own team. Be part of a community
-                    that shares your passion for collaboration, competition, and growth.
+                <h1
+                    className={`text-5xl text-white font-extrabold mb-4 tracking-tight transition-all duration-700 transform ${
+                        showTitle ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-6'
+                    }`}
+                >
+                    Teams &amp; Organizations
+                </h1>
+                <p
+                    className={`text-lg mb-4 text-gray-300 transition-all duration-700 delay-200 transform ${
+                        showText1 ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
+                    }`}
+                >
+                    Step into the arena—join or form your dream squad, champion the game you love, and carve your place in a legacy of fierce competition.
                 </p>
-                <p className="text-lg mb-4">
-                    Teams are the backbone of shared success, where individuals come together to achieve greatness.
-                    Whether you're a seasoned leader or a new recruit, there's a place for you here.
-                </p>
-                <p className="text-lg">
-                    Dive into the world of teamwork, strategy, and achievement. <strong>Your journey begins here.</strong>
+                <p
+                    className={`text-lg mb-6 text-gray-300 transition-all duration-700 delay-400 transform ${
+                        showText2 ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
+                    }`}
+                >
+                    From rising crews to established organizations, unite under a single banner and explore the teams that are shaking up the scene.
                 </p>
 
-                {/* Explore Button */}
-                <Link
-                    to="/teams/explore"
-                    className="mt-6 inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg"
-                >
-                    Explore Teams
-                </Link>
+                <div className="flex justify-center gap-6 flex-wrap transition-all duration-700 delay-600 transform" style={{
+                    opacity: showText2 ? 1 : 0,
+                    transform: showText2 ? 'translateY(0)' : 'translateY(10px)'
+                }}>
+                    <Link
+                        to="/teams/explore"
+                        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 transition rounded-lg text-white font-semibold shadow"
+                    >
+                        Explore Teams
+                    </Link>
+                    <Link
+                        to="/organizations/explore"
+                        className="px-6 py-3 bg-green-600 hover:bg-green-700 transition rounded-lg text-white font-semibold shadow"
+                    >
+                        Explore Organizations
+                    </Link>
+                </div>
             </div>
 
-            {/* Footer Section */}
-            <div className="absolute bottom-4 left-4 text-white text-sm bg-black bg-opacity-75 px-4 py-2 rounded-md italic">
-                <p>&copy; IEM COLOGNE</p>
+            <div className="absolute bottom-4 left-4 text-sm text-white bg-black bg-opacity-75 px-4 py-2 rounded-md italic">
+                &copy; GEM IEM Cologne
             </div>
         </div>
     );

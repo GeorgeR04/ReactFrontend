@@ -1,27 +1,30 @@
+// src/pages/Tournament.jsx
 import React, { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Video from '../../assets/Video/BackgroundVideo.mp4';
 
 const Tournament = () => {
     const contentRef = useRef(null);
-    const [isVisible, setIsVisible] = useState(false);
-    const [hasSlidOut, setHasSlidOut] = useState(false);
+    const [showTitle, setShowTitle] = useState(false);
+    const [showText1, setShowText1] = useState(false);
+    const [showText2, setShowText2] = useState(false);
 
     useEffect(() => {
-        const handleScroll = () => {
-            if (contentRef.current) {
-                const rect = contentRef.current.getBoundingClientRect();
-                if (rect.top < window.innerHeight && rect.bottom > 0) {
-                    setIsVisible(true);
-                } else if (rect.bottom < 0) {
-                    setIsVisible(false);
-                    setHasSlidOut(true);
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting) {
+                    setTimeout(() => setShowTitle(true), 100);
+                    setTimeout(() => setShowText1(true), 400);
+                    setTimeout(() => setShowText2(true), 800);
                 }
-            }
-        };
+            },
+            { threshold: 0.3 }
+        );
 
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
+        if (contentRef.current) observer.observe(contentRef.current);
+        return () => {
+            if (contentRef.current) observer.unobserve(contentRef.current);
+        };
     }, []);
 
     return (
@@ -38,37 +41,46 @@ const Tournament = () => {
             </video>
 
             {/* Black Gradients */}
-            <div className="absolute top-0 left-0 w-full h-1/4 bg-gradient-to-b from-black to-transparent"></div>
-            <div className="absolute bottom-0 left-0 w-full h-1/4 bg-gradient-to-t from-black to-transparent"></div>
+            <div className="absolute top-0 left-0 w-full h-1/4 bg-gradient-to-b from-black to-transparent" />
+            <div className="absolute bottom-0 left-0 w-full h-1/4 bg-gradient-to-t from-black to-transparent" />
 
             {/* Content */}
-            <div className="relative z-10 flex flex-col items-center justify-center min-h-screen text-white">
+            <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-4">
                 <div
                     ref={contentRef}
-                    className={`relative z-10 text-center p-8 bg-black bg-opacity-50 w-3/4 rounded-lg shadow-lg transition-all duration-1000 transform ${
-                        isVisible
-                            ? 'translate-y-0 opacity-100'
-                            : hasSlidOut
-                                ? 'translate-y-20 opacity-0'
-                                : ''
-                    }`}
+                    className="bg-black bg-opacity-70 backdrop-blur-md w-full max-w-3xl p-8 rounded-lg shadow-lg text-white text-center"
                 >
-                    {/* Text Section */}
-                    <h2 className="text-5xl font-extrabold mb-6">Tournament</h2>
-                    <p className="text-lg mb-4">
-                        Step into the realm where dreams are forged and legends are born. This platform isn’t just a tool; it’s a gateway to create something extraordinary. Organizers hold the power to design tournaments that ignite rivalries, unite communities, and showcase the unrelenting spirit of competition. Every click, every match, every moment has the potential to shape history.
+                    <h2
+                        className={`text-5xl font-extrabold mb-6 transition-all duration-700 transform ${
+                            showTitle ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-6'
+                        }`}
+                    >
+                        Tournament
+                    </h2>
+                    <p
+                        className={`text-lg mb-4 transition-all duration-700 delay-200 transform ${
+                            showText1 ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
+                        }`}
+                    >
+                        Step into the realm where dreams are forged and legends are born. This platform isn’t just
+                        a tool; it’s a gateway to create something extraordinary. Organizers hold the power to
+                        design tournaments that ignite rivalries, unite communities, and showcase the unrelenting
+                        spirit of competition.
                     </p>
-                    <p className="text-lg mb-4">
-                        But at the pinnacle of it all stands the <strong>GEM Gaming Esport Major</strong>—the grand arena where only the best dare to tread. A spectacle that transcends gaming, it brings together champions from every corner of the globe to battle for glory and immortality. This is not just a tournament; it’s the ultimate proving ground, a celebration of skill, courage, and unyielding passion.
+                    <p
+                        className={`text-lg mb-4 transition-all duration-700 delay-400 transform ${
+                            showText2 ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
+                        }`}
+                    >
+                        At the pinnacle stands the <strong>GEM Gaming Esport Major</strong>—the grand arena where only
+                        the best dare to tread. Champions from across the globe battle for glory and immortality.
+                        This is the ultimate proving ground, a celebration of skill, courage, and passion.
                     </p>
-                    <p className="text-lg">
-                        Are you ready to take your place in the story of esports? Whether you create, compete, or cheer from the stands, the journey begins here. <strong>The stage is set, and the world is watching.</strong>
-                    </p>
-
-                    {/* Explore Button */}
                     <Link
                         to="/tournament/gem"
-                        className="mt-6 inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg"
+                        className={`inline-block mt-6 font-bold py-2 px-6 rounded-lg bg-blue-500 hover:bg-blue-600 transition-all duration-700 transform ${
+                            showText2 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+                        }`}
                     >
                         Explore
                     </Link>
