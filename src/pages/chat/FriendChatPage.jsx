@@ -3,8 +3,8 @@ import { AuthContext } from '../../security/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import AddFriendPanel from './panel/AddFriendPanel.jsx';
 import ReceivedRequestsPanel from './panel/ReceivedRequestsPanel.jsx';
-import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
+import OrganizationInvitesPanel from "./panel/OrganizationInvitesPanel.jsx";
 
 const FriendChatPage = () => {
     const { user, token } = useContext(AuthContext);
@@ -109,6 +109,7 @@ const FriendChatPage = () => {
             <aside className="w-1/4 bg-gray-850 p-4 space-y-4 overflow-y-auto border-r border-gray-700">
                 <AddFriendPanel />
                 <ReceivedRequestsPanel />
+
                 <section>
                     <h2 className="text-xl font-bold mb-2">Friends</h2>
                     <ul className="space-y-2">
@@ -128,6 +129,12 @@ const FriendChatPage = () => {
                             </li>
                         ))}
                     </ul>
+                </section>
+                <section>
+                    <h2 className="text-xl font-bold mb-2 mt-6">Organization Invites</h2>
+                    {user && (
+                        <OrganizationInvitesPanel user={user} token={token} />
+                    )}
                 </section>
             </aside>
 

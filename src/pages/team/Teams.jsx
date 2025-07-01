@@ -85,7 +85,7 @@ const Team = () => {
             </div>
 
             <div className="absolute bottom-4 left-4 text-sm text-white bg-black bg-opacity-75 px-4 py-2 rounded-md italic">
-                &copy; GEM IEM Cologne
+                &copy; ESL IEM Cologne
             </div>
         </div>
     );

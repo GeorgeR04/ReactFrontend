@@ -161,7 +161,8 @@ const TeamExplore = () => {
                         {filteredTeams.map((team, index) => (
                             <li
                                 key={team.id}
-                                className="relative bg-gray-900 rounded-lg shadow-lg overflow-hidden hover:scale-105 transition transform"
+                                onClick={() => navigate(`/teams/${team.id}`)}
+                                className="cursor-pointer relative bg-gray-900 rounded-lg shadow-lg overflow-hidden hover:scale-105 transition transform"
                             >
                                 {/* Rank Badge */}
                                 <div
