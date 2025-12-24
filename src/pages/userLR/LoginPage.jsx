@@ -1,129 +1,156 @@
-import React, { useState, useContext, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { AuthContext } from '../../security/AuthContext.jsx';
-import backgroundImage from '../../assets/Image/pageImage/loginbacbg.jpg';
-import { EyeIcon, EyeOffIcon } from 'lucide-react'; // Nécessite l'installation de lucide-react
+import React, { useEffect, useState, useContext } from "react";
+import { Link } from "react-router-dom";
+import { AuthContext } from "../../security/AuthContext.jsx";
+import backgroundImage from "../../assets/Image/pageImage/loginbacbg.jpg";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
+
+import Hero from "../../Components/layout/Hero.jsx";
+import CornerBadge from "../../Components/ui/CornerBadge.jsx";
 
 function Login() {
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
-    const [isLoaded, setIsLoaded] = useState(false);
     const { login } = useContext(AuthContext);
 
-    useEffect(() => {
-        setIsLoaded(true);
-    }, []);
+    const [username, setUsername] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
+    const [showPassword, setShowPassword] = useState(false);
+
+    const [isLoaded, setIsLoaded] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => setIsLoaded(true), []);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const loginRequest = { username, password };
+        setError("");
+        setIsSubmitting(true);
 
         try {
-            const response = await fetch('http://localhost:8080/api/auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(loginRequest),
+            const response = await fetch("http://localhost:8080/api/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password }),
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.message || 'Login failed');
+                let message = "Login failed";
+                try {
+                    const errorData = await response.json();
+                    message = errorData.message || message;
+                } catch {}
+                throw new Error(message);
             }
-
 
             const data = await response.json();
             login(data.token);
         } catch (err) {
-            setError(err.message);
+            setError(err.message || "Login failed");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     return (
-        <div
-            className="login-container w-full h-screen flex items-center justify-start relative"
-            style={{
-                backgroundImage: `url(${backgroundImage})`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-                backgroundRepeat: 'no-repeat',
-            }}
-        >
-            <div className={`absolute top-0 left-0 w-full h-full transition-opacity duration-1000 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} style={{
-                backgroundImage: `
-                    linear-gradient(to bottom, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0) 40%),
-                    linear-gradient(to top, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0) 40%)`,
-            }} />
+        <Hero backgroundImage={backgroundImage}>
+            <section className="mx-auto flex min-h-screen max-w-6xl items-center px-4 py-12 sm:px-6 lg:px-8">
+                <div
+                    className={[
+                        "w-full max-w-md rounded-2xl border border-white/10 bg-black/60 p-6 shadow-2xl backdrop-blur",
+                        "transition-all duration-700",
+                        isLoaded ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0",
+                    ].join(" ")}
+                >
+                    <h1 className="text-3xl font-semibold tracking-tight text-white">Login</h1>
+                    <p className="mt-2 text-sm italic text-white/70">The Return of the Legend.</p>
 
-            <div className={`w-full max-w-md ml-20 bg-gray-900 p-8 rounded-lg shadow-lg transform transition-transform duration-1000 ${isLoaded ? 'translate-x-0' : '-translate-x-20'}`} style={{ marginTop: '2rem' }}>
-                <h1 className="text-3xl font-bold mb-2 text-white">Login</h1>
-                <p className="text-lg mb-6 text-gray-300 italic">The Return of the Legend.</p>
+                    <form
+                        onSubmit={handleSubmit}
+                        className="mt-8 space-y-4"
+                        aria-describedby={error ? "login-error" : undefined}
+                    >
+                        <div>
+                            <label htmlFor="username" className="block text-sm font-medium text-white/80">
+                                Username
+                            </label>
+                            <input
+                                id="username"
+                                type="text"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                autoComplete="username"
+                                className="mt-2 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-white placeholder:text-white/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                                placeholder="Enter username"
+                                required
+                            />
+                        </div>
 
-                <form onSubmit={handleSubmit} className="login-form">
-                    <div className="mb-4">
-                        <label className="block text-sm font-bold mb-2 text-gray-300">Username</label>
-                        <input
-                            type="text"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                            placeholder="Enter username"
-                            required
-                        />
-                    </div>
+                        <div>
+                            <label htmlFor="password" className="block text-sm font-medium text-white/80">
+                                Password
+                            </label>
+                            <div className="relative mt-2">
+                                <input
+                                    id="password"
+                                    type={showPassword ? "text" : "password"}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    autoComplete="current-password"
+                                    className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 pr-10 text-white placeholder:text-white/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                                    placeholder="Enter password"
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    className="absolute inset-y-0 right-2 inline-flex items-center rounded-lg px-2 text-white/60 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                                    onClick={() => setShowPassword((v) => !v)}
+                                    aria-label={showPassword ? "Hide password" : "Show password"}
+                                >
+                                    {showPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
+                                </button>
+                            </div>
+                        </div>
 
-                    <div className="mb-2 relative">
-                        <label className="block text-sm font-bold mb-2 text-gray-300">Password</label>
-                        <input
-                            type={showPassword ? 'text' : 'password'}
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="shadow appearance-none border rounded w-full py-2 px-3 pr-10 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                            placeholder="Enter password"
-                            required
-                        />
-                        <div
-                            className="absolute top-9 right-3 cursor-pointer text-gray-500"
-                            onClick={() => setShowPassword(!showPassword)}
+                        <div className="flex items-center justify-end">
+                            <Link to="/reset-password" className="text-sm text-white/70 hover:text-white hover:underline">
+                                Forgot password ?
+                            </Link>
+                        </div>
+
+                        {error && (
+                            <p
+                                id="login-error"
+                                className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200"
+                                aria-live="polite"
+                            >
+                                {error}
+                            </p>
+                        )}
+
+                        <button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className={[
+                                "w-full rounded-xl px-4 py-2.5 text-sm font-semibold text-neutral-950",
+                                "bg-white hover:bg-white/90 transition",
+                                "focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50",
+                                "disabled:opacity-60 disabled:cursor-not-allowed",
+                            ].join(" ")}
                         >
-                            {showPassword ? <EyeOffIcon size={18} /> : <EyeIcon size={18} />}
-                        </div>
-                    </div>
+                            {isSubmitting ? "Logging in..." : "Login"}
+                        </button>
 
-                    {/* Mot de passe oublié */}
-                    <div className="mb-6 text-right">
-                        <Link to="/reset-password" className="text-sm text-blue-400 hover:underline">
-                            Forgot password ?
-                        </Link>
-                    </div>
-
-                    <div className="flex items-start justify-between mt-6">
-                        <div className="flex flex-col items-center">
-                            <p className="text-sm italic text-gray-300 mb-1">Ready to join the battle?</p>
-                            <button type="submit" className="bg-black hover:bg-gray-800 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition-all duration-300 ease-in-out">
-                                Login
-                            </button>
-                        </div>
-
-                        <div className="flex flex-col items-center">
-                            <p className="text-sm italic text-gray-300 mb-1">Don't have an account?</p>
-                            <Link to="/register" className="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded-lg shadow-lg transition-all duration-300 ease-in-out">
+                        <div className="text-center text-sm text-white/70">
+                            Don&apos;t have an account?{" "}
+                            <Link to="/register" className="font-semibold text-white hover:underline">
                                 Register
                             </Link>
                         </div>
-                    </div>
+                    </form>
+                </div>
+            </section>
 
-                    {error && <p className="text-red-500 text-xs mt-4">{error}</p>}
-                </form>
-            </div>
-
-            <div className="absolute bottom-4 left-4 text-white text-sm bg-black bg-opacity-75 px-4 py-2 rounded-md italic">
-                &copy;ESL IEM COLOGNE
-            </div>
-        </div>
+            <CornerBadge>&copy; ESL IEM COLOGNE</CornerBadge>
+        </Hero>
     );
 }
 

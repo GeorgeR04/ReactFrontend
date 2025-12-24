@@ -1,87 +1,146 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { AuthContext } from '../../security/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import AddFriendPanel from './panel/AddFriendPanel.jsx';
-import ReceivedRequestsPanel from './panel/ReceivedRequestsPanel.jsx';
-import { Client } from '@stomp/stompjs';
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { AuthContext } from "../../security/AuthContext";
+import AddFriendPanel from "./panel/AddFriendPanel.jsx";
+import ReceivedRequestsPanel from "./panel/ReceivedRequestsPanel.jsx";
 import OrganizationInvitesPanel from "./panel/OrganizationInvitesPanel.jsx";
+import { Client } from "@stomp/stompjs";
+
+function cx(...classes) {
+    return classes.filter(Boolean).join(" ");
+}
 
 const FriendChatPage = () => {
     const { user, token } = useContext(AuthContext);
+
+    const cleanToken = useMemo(() => token?.trim() || "", [token]);
+
     const [friends, setFriends] = useState([]);
+    const [friendsStatus, setFriendsStatus] = useState("loading"); // loading | ready | error
+    const [friendsError, setFriendsError] = useState("");
+
     const [selectedFriend, setSelectedFriend] = useState(null);
-    const [messages, setMessages] = useState([]);
-    const [newMessage, setNewMessage] = useState('');
-    const [stompClient, setStompClient] = useState(null);
     const [activeConversationId, setActiveConversationId] = useState(null);
-    const navigate = useNavigate();
+
+    const [messages, setMessages] = useState([]);
+    const [messagesStatus, setMessagesStatus] = useState("idle"); // idle | loading | ready | error
+    const [messagesError, setMessagesError] = useState("");
+
+    const [newMessage, setNewMessage] = useState("");
+    const [stompClient, setStompClient] = useState(null);
+
     const [showContent, setShowContent] = useState(false);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-    const getCleanToken = () => token?.trim() || '';
+    const listEndRef = useRef(null);
 
+    // soft fade-in
     useEffect(() => {
-        const timeout = setTimeout(() => setShowContent(true), 200);
-        return () => clearTimeout(timeout);
+        const t = setTimeout(() => setShowContent(true), 150);
+        return () => clearTimeout(t);
     }, []);
 
+    // Scroll to bottom on new messages
+    useEffect(() => {
+        listEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages.length, selectedFriend?.id]);
+
+    // Connect STOMP
     useEffect(() => {
         if (!token || !user) return;
 
         const client = new Client({
-            brokerURL: 'ws://localhost:8080/ws',
-            connectHeaders: {
-                Authorization: `Bearer ${token}`
-            },
+            brokerURL: "ws://localhost:8080/ws",
+            connectHeaders: { Authorization: `Bearer ${token}` },
             reconnectDelay: 5000,
             onConnect: () => {
                 setStompClient(client);
-                client.subscribe('/topic/public', message => {
-                    const msg = JSON.parse(message.body);
-                    if (msg.conversationId === activeConversationId) {
-                        setMessages(prev => [...prev, msg]);
+
+                // One subscription, filter by conversationId
+                client.subscribe("/topic/public", (message) => {
+                    try {
+                        const msg = JSON.parse(message.body);
+
+                        if (!msg?.conversationId) return;
+                        if (String(msg.conversationId) !== String(activeConversationId)) return;
+
+                        setMessages((prev) => [...prev, msg]);
+                    } catch (e) {
+                        console.error("[STOMP] parse error", e);
                     }
                 });
             },
-            onStompError: err => console.error('[STOMP ERROR]', err),
-            onWebSocketError: err => console.error('[WS ERROR]', err)
+            onStompError: (err) => console.error("[STOMP ERROR]", err),
+            onWebSocketError: (err) => console.error("[WS ERROR]", err),
         });
 
         client.activate();
-        return () => { if (client.connected) client.deactivate(); };
+
+        return () => {
+            try {
+                client.deactivate();
+            } catch {}
+        };
     }, [token, user, activeConversationId]);
 
+    // Fetch friends list
     useEffect(() => {
-        if (!user) return;
+        if (!user || !cleanToken) return;
+
         const fetchFriends = async () => {
+            setFriendsStatus("loading");
+            setFriendsError("");
+
             try {
                 const res = await fetch(`http://localhost:8080/api/friends/${user.username}`, {
-                    headers: { Authorization: `Bearer ${getCleanToken()}` }
+                    headers: { Authorization: `Bearer ${cleanToken}` },
                 });
+
+                if (!res.ok) throw new Error("Failed to load friends.");
+
                 const data = await res.json();
-                setFriends(data);
+                setFriends(Array.isArray(data) ? data : []);
+                setFriendsStatus("ready");
             } catch (err) {
-                console.error('Error fetching friends:', err);
+                setFriendsStatus("error");
+                setFriendsError(err?.message || "Error fetching friends.");
             }
         };
+
         fetchFriends();
-    }, [user]);
+    }, [user, cleanToken]);
 
     const loadMessages = async (friend) => {
+        if (!friend?.id) return;
+
+        setSelectedFriend(friend);
+        setMessages([]);
+        setMessagesStatus("loading");
+        setMessagesError("");
+        setIsSidebarOpen(false);
+
         try {
+            // 1) conversation id
             const res = await fetch(`http://localhost:8080/api/chat/private/conversation-with/${friend.id}`, {
-                headers: { Authorization: `Bearer ${getCleanToken()}` }
+                headers: { Authorization: `Bearer ${cleanToken}` },
             });
+
+            if (!res.ok) throw new Error("Failed to open conversation.");
             const conversationId = await res.text();
             setActiveConversationId(conversationId);
 
+            // 2) messages
             const msgRes = await fetch(`http://localhost:8080/api/chat/conversation/${friend.id}`, {
-                headers: { Authorization: `Bearer ${getCleanToken()}` }
+                headers: { Authorization: `Bearer ${cleanToken}` },
             });
+
+            if (!msgRes.ok) throw new Error("Failed to load messages.");
             const msgs = await msgRes.json();
-            setMessages(msgs);
-            setSelectedFriend(friend);
+
+            setMessages(Array.isArray(msgs) ? msgs : []);
+            setMessagesStatus("ready");
         } catch (err) {
-            console.error('[Chat] Error loading messages:', err);
+            setMessagesStatus("error");
+            setMessagesError(err?.message || "Error loading messages.");
         }
     };
 
@@ -92,98 +151,270 @@ const FriendChatPage = () => {
             senderId: user.id,
             receiverId: selectedFriend.id,
             conversationId: activeConversationId,
-            content: newMessage,
-            messageType: "PRIVATE"
+            content: newMessage.trim(),
+            messageType: "PRIVATE",
         };
 
         stompClient.publish({
             destination: "/app/chat.sendMessage",
-            body: JSON.stringify(payload)
+            body: JSON.stringify(payload),
         });
 
-        setNewMessage('');
+        setNewMessage("");
     };
 
+    const onComposerKeyDown = (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+        }
+    };
+
+    const avatarSrc = (base64) => (base64 ? `data:image/jpeg;base64,${base64}` : "");
+
     return (
-        <div className={`flex w-full h-screen bg-gray-900 text-white transition-opacity duration-700 ease-in-out ${showContent ? 'opacity-100' : 'opacity-0'}`}>
-            <aside className="w-1/4 bg-gray-850 p-4 space-y-4 overflow-y-auto border-r border-gray-700">
-                <AddFriendPanel />
-                <ReceivedRequestsPanel />
+        <div
+            className={cx(
+                "min-h-screen w-full bg-neutral-950 text-white",
+                "transition-opacity duration-700 ease-in-out",
+                showContent ? "opacity-100" : "opacity-0"
+            )}
+        >
+            <div className="mx-auto flex min-h-screen max-w-7xl">
+                {/* Mobile top bar */}
+                <div className="fixed left-0 right-0 top-0 z-40 border-b border-white/10 bg-black text-white md:hidden">
+                    <div className="flex items-center justify-between px-4 py-3">
+                        <button
+                            onClick={() => setIsSidebarOpen((v) => !v)}
+                            className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-semibold hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                        >
+                            {isSidebarOpen ? "Close" : "Friends"}
+                        </button>
+                        <div className="text-sm text-white/80">
+                            {selectedFriend ? `Chat: ${selectedFriend.username}` : "Friend Chat"}
+                        </div>
+                    </div>
+                </div>
 
-                <section>
-                    <h2 className="text-xl font-bold mb-2">Friends</h2>
-                    <ul className="space-y-2">
-                        {friends.map((f) => (
-                            <li key={f.id} className="p-2 bg-gray-700 rounded hover:bg-gray-600">
-                                <div className="flex items-center gap-3 cursor-pointer" onClick={() => loadMessages(f)}>
-                                    <img
-                                        src={`data:image/jpeg;base64,${f.profileImage}`}
-                                        alt="avatar"
-                                        className="w-9 h-9 rounded-full"
-                                    />
-                                    <div className="text-sm">
-                                        <div className="font-semibold">{f.username} <span className="text-xs text-gray-400">({f.role})</span></div>
-                                        <div className="text-xs text-gray-300">{f.firstname} {f.lastname}</div>
-                                    </div>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                </section>
-                <section>
-                    <h2 className="text-xl font-bold mb-2 mt-6">Organization Invites</h2>
-                    {user && (
-                        <OrganizationInvitesPanel user={user} token={token} />
+                {/* Sidebar */}
+                <aside
+                    className={cx(
+                        "fixed inset-y-0 left-0 z-50 w-[320px] border-r border-white/10 bg-black p-4 overflow-y-auto md:static md:z-auto md:h-auto md:w-[340px]",
+                        "transition-transform duration-300",
+                        isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
+                        "pt-16 md:pt-4" // space for mobile top bar
                     )}
-                </section>
-            </aside>
+                    aria-label="Friends sidebar"
+                >
+                    <div className="space-y-4">
+                        <div className="rounded-2xl border border-white/10 bg-black/55 p-4 shadow-2xl backdrop-blur">
+                            <AddFriendPanel />
+                        </div>
 
-            <main className="w-3/4 flex flex-col p-6 space-y-4">
-                {selectedFriend ? (
-                    <>
-                        <div className="flex-1 overflow-y-auto bg-gray-700 rounded-lg p-4 transition-all duration-500 ease-in-out">
-                            {messages.length === 0 ? (
-                                <div className="text-center text-sm text-gray-400">
-                                    No messages yet. Start the conversation!
-                                </div>
-                            ) : (
-                                messages.map((msg, i) => {
-                                    const isMine = String(msg.senderId) === String(user.id);
-                                    return (
-                                        <div key={i} className={`flex mb-3 ${isMine ? 'justify-end' : 'justify-start'} transition-opacity duration-500`}>
-                                            {!isMine && (
-                                                <img src={`data:image/jpeg;base64,${selectedFriend.profileImage}`} alt="avatar" className="w-8 h-8 rounded-full mr-2 self-end" />
-                                            )}
-                                            <div className={`px-4 py-2 rounded-2xl max-w-xs break-words shadow ${isMine ? 'bg-blue-600 text-white' : 'bg-gray-600 text-white'}`}>
-                                                {msg.content}
-                                            </div>
-                                            {isMine && (
-                                                <img src={`data:image/jpeg;base64,${user.profileImage}`} alt="avatar" className="w-8 h-8 rounded-full ml-2 self-end" />
-                                            )}
-                                        </div>
-                                    );
-                                })
+                        <div className="rounded-2xl border border-white/10 bg-black/55 p-4 shadow-2xl backdrop-blur">
+                            <ReceivedRequestsPanel />
+                        </div>
+
+                        <div className="rounded-2xl border border-white/10 bg-black/55 p-4 shadow-2xl backdrop-blur">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-base font-semibold">Friends</h2>
+                                <span className="text-xs text-white/60">{friends.length}</span>
+                            </div>
+
+                            {friendsStatus === "loading" && (
+                                <p className="mt-3 text-sm text-white/70">Loading friends...</p>
+                            )}
+
+                            {friendsStatus === "error" && (
+                                <p className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                                    {friendsError}
+                                </p>
+                            )}
+
+                            {friendsStatus === "ready" && friends.length === 0 && (
+                                <p className="mt-3 text-sm text-white/70">No friends yet. Add someone to start chatting.</p>
+                            )}
+
+                            {friendsStatus === "ready" && friends.length > 0 && (
+                                <ul className="mt-3 space-y-2">
+                                    {friends.map((f) => {
+                                        const isActive = selectedFriend?.id === f.id;
+                                        return (
+                                            <li key={f.id}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => loadMessages(f)}
+                                                    className={cx(
+                                                        "w-full rounded-2xl border border-white/10 p-3 text-left transition",
+                                                        "hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60",
+                                                        isActive ? "bg-white/10" : "bg-black/40"
+                                                    )}
+                                                >
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="h-10 w-10 overflow-hidden rounded-full border border-white/10 bg-white/10">
+                                                            {f.profileImage ? (
+                                                                <img
+                                                                    src={avatarSrc(f.profileImage)}
+                                                                    alt={`${f.username} avatar`}
+                                                                    className="h-full w-full object-cover"
+                                                                />
+                                                            ) : (
+                                                                <div className="h-full w-full" />
+                                                            )}
+                                                        </div>
+                                                        <div className="min-w-0">
+                                                            <div className="flex items-baseline gap-2">
+                                                                <div className="truncate font-semibold">{f.username}</div>
+                                                                <div className="text-xs text-white/50">({f.role})</div>
+                                                            </div>
+                                                            <div className="truncate text-xs text-white/70">
+                                                                {f.firstname} {f.lastname}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </button>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
                             )}
                         </div>
-                        <div className="flex space-x-2">
-                            <input
-                                className="flex-1 p-2 rounded bg-gray-800 text-white border border-gray-600 transition-all duration-300 focus:ring-2 focus:ring-blue-500"
-                                value={newMessage}
-                                onChange={(e) => setNewMessage(e.target.value)}
-                                placeholder="Type a message..."
-                            />
-                            <button
-                                onClick={sendMessage}
-                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded shadow transition-all duration-300"
-                            >
-                                Send
-                            </button>
+
+                        <div className="rounded-2xl border border-white/10 bg-black/55 p-4 shadow-2xl backdrop-blur">
+                            <h2 className="text-base font-semibold">Organization Invites</h2>
+                            <div className="mt-3">
+                                {user ? <OrganizationInvitesPanel user={user} token={token} /> : <p className="text-sm text-white/70">Loading…</p>}
+                            </div>
                         </div>
-                    </>
-                ) : (
-                    <p className="text-lg text-center my-auto">Select a friend to chat with</p>
-                )}
-            </main>
+                    </div>
+                </aside>
+
+                {/* Main chat */}
+                <main className="flex min-h-screen flex-1 flex-col px-4 pb-6 pt-20 md:pt-6">
+                    <div className="flex-1 rounded-2xl border border-white/10 bg-black/55 shadow-2xl backdrop-blur">
+                        {/* Header */}
+                        <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+                            <div className="min-w-0">
+                                <div className="text-sm text-white/60">Conversation</div>
+                                <div className="truncate text-base font-semibold">
+                                    {selectedFriend ? selectedFriend.username : "Select a friend"}
+                                </div>
+                            </div>
+                            {selectedFriend && (
+                                <div className="hidden items-center gap-2 sm:flex">
+                                    <div className="text-xs text-white/60">Role:</div>
+                                    <div className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-xs">
+                                        {selectedFriend.role}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Messages */}
+                        <div className="h-[calc(100vh-260px)] md:h-[calc(100vh-220px)] overflow-y-auto px-4 py-4">
+                            {!selectedFriend && (
+                                <div className="flex h-full items-center justify-center text-sm text-white/60">
+                                    Select a friend to chat with
+                                </div>
+                            )}
+
+                            {selectedFriend && messagesStatus === "loading" && (
+                                <div className="text-sm text-white/70">Loading messages...</div>
+                            )}
+
+                            {selectedFriend && messagesStatus === "error" && (
+                                <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                                    {messagesError}
+                                </div>
+                            )}
+
+                            {selectedFriend && messagesStatus === "ready" && messages.length === 0 && (
+                                <div className="text-center text-sm text-white/60">
+                                    No messages yet. Start the conversation!
+                                </div>
+                            )}
+
+                            {selectedFriend && messages.length > 0 && (
+                                <div className="space-y-3">
+                                    {messages.map((msg, i) => {
+                                        const isMine = String(msg.senderId) === String(user.id);
+
+                                        return (
+                                            <div key={i} className={cx("flex items-end gap-2", isMine ? "justify-end" : "justify-start")}>
+                                                {!isMine && (
+                                                    <div className="h-8 w-8 overflow-hidden rounded-full border border-white/10 bg-white/10">
+                                                        {selectedFriend.profileImage ? (
+                                                            <img src={avatarSrc(selectedFriend.profileImage)} alt="avatar" className="h-full w-full object-cover" />
+                                                        ) : (
+                                                            <div className="h-full w-full" />
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                <div
+                                                    className={cx(
+                                                        "max-w-[75%] rounded-2xl px-4 py-2 text-sm leading-relaxed shadow",
+                                                        "break-words whitespace-pre-wrap",
+                                                        isMine ? "bg-white text-neutral-950" : "bg-white/10 text-white"
+                                                    )}
+                                                >
+                                                    {msg.content}
+                                                </div>
+
+                                                {isMine && (
+                                                    <div className="h-8 w-8 overflow-hidden rounded-full border border-white/10 bg-white/10">
+                                                        {user.profileImage ? (
+                                                            <img src={avatarSrc(user.profileImage)} alt="avatar" className="h-full w-full object-cover" />
+                                                        ) : (
+                                                            <div className="h-full w-full" />
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                    <div ref={listEndRef} />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Composer */}
+                        <div className="border-t border-white/10 p-4">
+                            <div className="flex gap-2">
+                <textarea
+                    className="min-h-[44px] flex-1 resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:opacity-60"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    onKeyDown={onComposerKeyDown}
+                    placeholder={selectedFriend ? "Type a message... (Enter to send)" : "Select a friend to start chatting..."}
+                    disabled={!selectedFriend}
+                    rows={1}
+                />
+                                <button
+                                    onClick={sendMessage}
+                                    disabled={!selectedFriend || !newMessage.trim() || !stompClient?.connected}
+                                    className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-white/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                    Send
+                                </button>
+                            </div>
+
+                            {!stompClient?.connected && (
+                                <p className="mt-2 text-xs text-white/50">Connecting to chat server…</p>
+                            )}
+                        </div>
+                    </div>
+                </main>
+            </div>
+
+            {/* Mobile overlay when sidebar open */}
+            {isSidebarOpen && (
+                <button
+                    aria-label="Close sidebar"
+                    className="fixed inset-0 z-40 bg-black/60 md:hidden"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
         </div>
     );
 };
