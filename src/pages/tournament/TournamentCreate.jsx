@@ -1,49 +1,50 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AuthContext } from '../../security/AuthContext.jsx';
+import React, { useState, useEffect, useContext } from "react";
+import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../../security/AuthContext.jsx";
+import ImagePicker from "../../components/ui/ImagePicker.jsx";
+function Section({ title, children }) {
+    return (
+        <div className="rounded-2xl border border-white/10 bg-black/55 p-6 shadow-2xl backdrop-blur">
+            <h2 className="mb-4 text-lg font-semibold">{title}</h2>
+            <div className="space-y-4">{children}</div>
+        </div>
+    );
+}
 
 const TournamentCreate = () => {
     const { token, user, isTokenExpired, logout } = useContext(AuthContext);
-    const [name, setName] = useState('');
-    const [description, setDescription] = useState('');
-    const [type, setType] = useState('solo'); // Default to "solo"
-    const [maxTeams, setMaxTeams] = useState(''); // Represents "Max Players" for solo tournaments
-    const [gameId, setGameId] = useState('');
-    const [games, setGames] = useState([]); // Games fetched from backend
-    const [minRankRequirement, setMinRankRequirement] = useState('');
-    const [maxRankRequirement, setMaxRankRequirement] = useState('');
-    const [trustFactorRequirement, setTrustFactorRequirement] = useState('');
-    const [visibility, setVisibility] = useState('public'); // Default visibility
-    const [image, setImage] = useState(null); // Base64 image
-    const [cashPrize, setCashPrize] = useState(''); // Cash prize
-    const [loadingGames, setLoadingGames] = useState(true); // Loading indicator
     const navigate = useNavigate();
+
+    const [games, setGames] = useState([]);
+    const [loadingGames, setLoadingGames] = useState(true);
+
+    const [form, setForm] = useState({
+        name: "",
+        description: "",
+        type: "solo",
+        maxTeams: "",
+        gameId: "",
+        minRankRequirement: "",
+        maxRankRequirement: "",
+        trustFactorRequirement: "",
+        visibility: "public",
+        cashPrize: "",
+        image: null,
+    });
 
     useEffect(() => {
         if (!token || isTokenExpired(token)) {
             logout();
-            alert('Session expired. Please log in again.');
-            navigate('/login');
+            navigate("/login");
             return;
         }
 
         const fetchGames = async () => {
             try {
-                setLoadingGames(true);
-                const response = await fetch('http://localhost:8080/api/games/list', {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                const res = await fetch("http://localhost:8080/api/games/list", {
+                    headers: { Authorization: `Bearer ${token}` },
                 });
-
-                if (response.ok) {
-                    const gamesData = await response.json();
-                    setGames(gamesData);
-                } else if (response.status === 403) {
-                    alert('You are not authorized to view games.');
-                }
-            } catch (error) {
-                console.error('Error fetching games:', error);
+                if (res.ok) setGames(await res.json());
             } finally {
                 setLoadingGames(false);
             }
@@ -52,176 +53,199 @@ const TournamentCreate = () => {
         fetchGames();
     }, [token, isTokenExpired, logout, navigate]);
 
+    const update = (key, value) =>
+        setForm((f) => ({ ...f, [key]: value }));
+
     const handleImageChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = () => setImage(reader.result.split(',')[1]);
-            reader.readAsDataURL(file);
-        }
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = () =>
+            update("image", reader.result.split(",")[1]);
+        reader.readAsDataURL(file);
     };
 
     const handleCreate = async () => {
-        if (!token || isTokenExpired(token)) {
-            logout();
-            alert('Session expired. Please log in again.');
-            navigate('/login');
+        if (!form.maxTeams || form.maxTeams <= 0) {
+            alert("Please provide a valid max players / teams value.");
             return;
         }
 
-        if (!maxTeams || maxTeams <= 0) {
-            alert('You must specify a positive value for max players or max teams.');
+        if (
+            form.minRankRequirement &&
+            form.maxRankRequirement &&
+            Number(form.minRankRequirement) > Number(form.maxRankRequirement)
+        ) {
+            alert("Minimum rank cannot exceed maximum rank.");
             return;
         }
 
-        if (minRankRequirement && maxRankRequirement && minRankRequirement > maxRankRequirement) {
-            alert('Minimum rank cannot exceed maximum rank.');
-            return;
-        }
+        const payload = {
+            ...form,
+            maxTeams: parseInt(form.maxTeams),
+            minRankRequirement: form.minRankRequirement
+                ? parseInt(form.minRankRequirement)
+                : null,
+            maxRankRequirement: form.maxRankRequirement
+                ? parseInt(form.maxRankRequirement)
+                : null,
+            trustFactorRequirement: form.trustFactorRequirement
+                ? parseInt(form.trustFactorRequirement)
+                : null,
+            cashPrize: form.cashPrize ? parseFloat(form.cashPrize) : 0,
+        };
 
         try {
-            const payload = {
-                name,
-                description,
-                type,
-                maxTeams: parseInt(maxTeams), // Map to backend's maxTeams
-                gameId,
-                minRankRequirement: parseInt(minRankRequirement) || null,
-                maxRankRequirement: parseInt(maxRankRequirement) || null,
-                trustFactorRequirement: parseInt(trustFactorRequirement) || null,
-                visibility,
-                image,
-                cashPrize: parseFloat(cashPrize) || 0,
-            };
+            const res = await fetch(
+                "http://localhost:8080/api/tournaments/create",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(payload),
+                }
+            );
 
-            console.log('Payload:', payload);
-
-            const response = await fetch('http://localhost:8080/api/tournaments/create', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
-            });
-
-            if (response.ok) {
-                alert('Tournament created successfully!');
-                navigate('/tournament/explore');
-            } else {
-                const errorText = await response.text();
-                console.error('Server Error:', errorText);
-                alert(`Failed to create tournament: ${errorText}`);
+            if (!res.ok) {
+                const err = await res.text();
+                alert(err);
+                return;
             }
-        } catch (error) {
-            console.error('Error creating tournament:', error);
-            alert('An error occurred while creating the tournament.');
+
+            navigate("/tournament/explore");
+        } catch {
+            alert("Failed to create tournament.");
         }
     };
 
     return (
-        <div className="p-8 text-white bg-gray-800">
-            <h1 className="text-4xl font-bold text-center mb-8">Create Tournament</h1>
-            <div className="max-w-md mx-auto space-y-4">
-                <input
-                    type="text"
-                    placeholder="Tournament Name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-4 py-2 rounded bg-gray-900 text-white"
-                />
-                <textarea
-                    placeholder="Description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="w-full px-4 py-2 rounded bg-gray-900 text-white"
-                />
-                <div>
-                    <label className="block mb-2 font-bold">Select a Game</label>
+        <main className="min-h-screen bg-neutral-950 text-white">
+            <section className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8 space-y-6">
+                <h1 className="text-3xl font-semibold text-center sm:text-4xl">
+                    Create Tournament
+                </h1>
+
+                <Section title="General Information">
+                    <input
+                        placeholder="Tournament name"
+                        value={form.name}
+                        onChange={(e) => update("name", e.target.value)}
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+                    />
+                    <textarea
+                        placeholder="Description"
+                        value={form.description}
+                        onChange={(e) => update("description", e.target.value)}
+                        rows={4}
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+                    />
+                </Section>
+
+                <Section title="Game & Format">
                     <select
-                        value={gameId}
-                        onChange={(e) => setGameId(e.target.value)}
-                        className="w-full px-4 py-2 rounded bg-gray-900 text-white"
-                        disabled={loadingGames || games.length === 0}
+                        value={form.gameId}
+                        onChange={(e) => update("gameId", e.target.value)}
+                        disabled={loadingGames}
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
                     >
-                        <option value="" disabled>
-                            {loadingGames ? 'Loading games...' : 'Select Game'}
+                        <option value="">
+                            {loadingGames ? "Loading games…" : "Select game"}
                         </option>
-                        {games.map((game) => (
-                            <option key={game.id} value={game.id}>
-                                {game.name}
+                        {games.map((g) => (
+                            <option key={g.id} value={g.id}>
+                                {g.name}
                             </option>
                         ))}
                     </select>
-                </div>
-                <select
-                    value={type}
-                    onChange={(e) => setType(e.target.value)}
-                    className="w-full px-4 py-2 rounded bg-gray-900 text-white"
-                >
-                    <option value="solo">Solo</option>
-                    <option value="team">Team</option>
-                </select>
-                <input
-                    type="number"
-                    placeholder={type === 'team' ? 'Max Teams' : 'Max Players'}
-                    value={maxTeams}
-                    onChange={(e) => setMaxTeams(e.target.value)}
-                    className="w-full px-4 py-2 rounded bg-gray-900 text-white"
-                />
-                <input
-                    type="number"
-                    placeholder="Cash Prize"
-                    value={cashPrize}
-                    onChange={(e) => setCashPrize(e.target.value)}
-                    className="w-full px-4 py-2 rounded bg-gray-900 text-white"
-                />
-                <input
-                    type="number"
-                    placeholder="Min Rank Requirement"
-                    value={minRankRequirement}
-                    onChange={(e) => setMinRankRequirement(e.target.value)}
-                    className="w-full px-4 py-2 rounded bg-gray-900 text-white"
-                />
-                <input
-                    type="number"
-                    placeholder="Max Rank Requirement"
-                    value={maxRankRequirement}
-                    onChange={(e) => setMaxRankRequirement(e.target.value)}
-                    className="w-full px-4 py-2 rounded bg-gray-900 text-white"
-                />
-                <input
-                    type="number"
-                    placeholder="Trust Factor Requirement"
-                    value={trustFactorRequirement}
-                    onChange={(e) => setTrustFactorRequirement(e.target.value)}
-                    className="w-full px-4 py-2 rounded bg-gray-900 text-white"
-                />
-                <select
-                    value={visibility}
-                    onChange={(e) => setVisibility(e.target.value)}
-                    className="w-full px-4 py-2 rounded bg-gray-900 text-white"
-                >
-                    <option value="public">Public</option>
-                    <option value="private">Private</option>
-                </select>
-                <div>
-                    <label className="block mb-2 font-bold">Tournament Image</label>
+
+                    <select
+                        value={form.type}
+                        onChange={(e) => update("type", e.target.value)}
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+                    >
+                        <option value="solo">Solo</option>
+                        <option value="team">Team</option>
+                    </select>
+
                     <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                        className="w-full px-4 py-2 text-white bg-gray-900 rounded"
+                        type="number"
+                        placeholder={
+                            form.type === "team" ? "Max teams" : "Max players"
+                        }
+                        value={form.maxTeams}
+                        onChange={(e) => update("maxTeams", e.target.value)}
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
                     />
+                </Section>
+
+                <Section title="Requirements">
+                    <input
+                        type="number"
+                        placeholder="Min rank"
+                        value={form.minRankRequirement}
+                        onChange={(e) =>
+                            update("minRankRequirement", e.target.value)
+                        }
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+                    />
+                    <input
+                        type="number"
+                        placeholder="Max rank"
+                        value={form.maxRankRequirement}
+                        onChange={(e) =>
+                            update("maxRankRequirement", e.target.value)
+                        }
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+                    />
+                    <input
+                        type="number"
+                        placeholder="Trust factor requirement"
+                        value={form.trustFactorRequirement}
+                        onChange={(e) =>
+                            update("trustFactorRequirement", e.target.value)
+                        }
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+                    />
+                </Section>
+
+                <Section title="Visibility & Rewards">
+                    <select
+                        value={form.visibility}
+                        onChange={(e) => update("visibility", e.target.value)}
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+                    >
+                        <option value="public">Public</option>
+                        <option value="private">Private</option>
+                    </select>
+
+                    <input
+                        type="number"
+                        placeholder="Cash prize"
+                        value={form.cashPrize}
+                        onChange={(e) => update("cashPrize", e.target.value)}
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+                    />
+
+                    <ImagePicker
+                        label="Choose tournament image"
+                        value={form.image}
+                        onChange={(img) => update("image", img)}
+                    />
+                </Section>
+
+                <div className="flex justify-center">
+                    <button
+                        onClick={handleCreate}
+                        className="rounded-xl bg-white px-6 py-2.5 text-sm font-semibold text-neutral-950 hover:bg-white/90"
+                    >
+                        Create Tournament
+                    </button>
                 </div>
-                <button
-                    onClick={handleCreate}
-                    className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded"
-                >
-                    Create
-                </button>
-            </div>
-        </div>
+            </section>
+        </main>
     );
 };
 

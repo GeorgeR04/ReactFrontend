@@ -1,5 +1,5 @@
-import React, { useState, useContext } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState, useContext } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../security/AuthContext.jsx";
 import ImagePicker from "../../components/ui/ImagePicker.jsx";
 
@@ -12,24 +12,58 @@ function Section({ title, children }) {
     );
 }
 
-const GameCreate = () => {
-    const { token, user } = useContext(AuthContext);
+const GameEdit = () => {
+    const { id } = useParams();
     const navigate = useNavigate();
+    const { token, isTokenExpired, logout, user } =
+        useContext(AuthContext);
 
-    const [form, setForm] = useState({
-        name: "",
-        type: "",
-        description: "",
-        rules: "",
-        tutorial: "",
-        maxPlayers: "",
-        yearOfExistence: "",
-        publisher: "",
-        platforms: [],
-        gameImage: null,
-    });
+    const [form, setForm] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-    const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+    useEffect(() => {
+        if (!token || isTokenExpired(token)) {
+            logout();
+            navigate("/login");
+            return;
+        }
+
+        const fetchGame = async () => {
+            try {
+                const res = await fetch(
+                    `http://localhost:8080/api/games/${id}`,
+                    {
+                        headers: { Authorization: `Bearer ${token}` },
+                    }
+                );
+
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+
+                setForm({
+                    name: data.name || "",
+                    type: data.type || "",
+                    description: data.description || "",
+                    rules: data.rules || "",
+                    tutorial: data.tutorial || "",
+                    maxPlayers: data.maxPlayersPerTeam || "",
+                    yearOfExistence: data.yearOfExistence || "",
+                    publisher: data.publisher || "",
+                    platforms: data.platforms || [],
+                    gameImage: data.gameImage || null,
+                });
+            } catch {
+                setForm(null);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchGame();
+    }, [id, token, isTokenExpired, logout, navigate]);
+
+    const update = (k, v) =>
+        setForm((f) => ({ ...f, [k]: v }));
 
     const togglePlatform = (p) =>
         update(
@@ -39,9 +73,9 @@ const GameCreate = () => {
                 : [...form.platforms, p]
         );
 
-    const handleCreate = async () => {
-        if (!form.name || !form.type || !form.description || !form.gameImage) {
-            alert("Please fill all required fields.");
+    const handleUpdate = async () => {
+        if (!form.name || !form.type || !form.description) {
+            alert("Missing required fields.");
             return;
         }
 
@@ -59,31 +93,50 @@ const GameCreate = () => {
         };
 
         try {
-            const res = await fetch("http://localhost:8080/api/games/create", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
-            });
+            const res = await fetch(
+                `http://localhost:8080/api/games/${id}`,
+                {
+                    method: "PUT",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: JSON.stringify(payload),
+                }
+            );
 
             if (!res.ok) {
                 alert(await res.text());
                 return;
             }
 
-            navigate("/games/explore");
+            navigate(`/games/${id}`);
         } catch {
-            alert("Failed to create game.");
+            alert("Failed to update game.");
         }
     };
+
+    if (loading) {
+        return (
+            <main className="min-h-screen bg-neutral-950 text-white flex items-center justify-center">
+                <p className="text-white/70">Loading game…</p>
+            </main>
+        );
+    }
+
+    if (!form) {
+        return (
+            <main className="min-h-screen bg-neutral-950 text-white flex items-center justify-center">
+                <p className="text-red-400">Game not found.</p>
+            </main>
+        );
+    }
 
     return (
         <main className="min-h-screen bg-neutral-950 text-white">
             <section className="mx-auto max-w-5xl px-4 py-12 space-y-6">
                 <h1 className="text-3xl font-semibold text-center sm:text-4xl">
-                    Create Game
+                    Modify Game
                 </h1>
 
                 <Section title="General Information">
@@ -94,14 +147,14 @@ const GameCreate = () => {
                         className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
                     />
                     <input
-                        placeholder="Game type (FPS, MOBA…)"
+                        placeholder="Game type"
                         value={form.type}
                         onChange={(e) => update("type", e.target.value)}
                         className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
                     />
                     <textarea
-                        placeholder="Description"
                         rows={4}
+                        placeholder="Description"
                         value={form.description}
                         onChange={(e) => update("description", e.target.value)}
                         className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
@@ -157,10 +210,10 @@ const GameCreate = () => {
 
                 <div className="flex justify-center">
                     <button
-                        onClick={handleCreate}
+                        onClick={handleUpdate}
                         className="rounded-xl bg-white px-6 py-2.5 text-sm font-semibold text-black hover:bg-white/90"
                     >
-                        Create Game
+                        Save Changes
                     </button>
                 </div>
             </section>
@@ -168,4 +221,4 @@ const GameCreate = () => {
     );
 };
 
-export default GameCreate;
+export default GameEdit;

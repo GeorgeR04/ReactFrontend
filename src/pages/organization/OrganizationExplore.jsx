@@ -1,107 +1,182 @@
-import React, { useEffect, useState, useContext } from 'react';
-import { AuthContext } from '../../security/AuthContext.jsx';
+import React, { useEffect, useState, useContext } from "react";
+import { AuthContext } from "../../security/AuthContext.jsx";
+
+function Section({ title, children }) {
+    return (
+        <div className="rounded-2xl border border-white/10 bg-black/55 p-6 shadow-2xl backdrop-blur">
+            <h2 className="mb-4 text-lg font-semibold">{title}</h2>
+            {children}
+        </div>
+    );
+}
 
 const OrganizationExplore = () => {
     const { token } = useContext(AuthContext);
+
     const [organizations, setOrganizations] = useState([]);
-    const [search, setSearch] = useState('');
+    const [filtered, setFiltered] = useState([]);
+    const [search, setSearch] = useState("");
     const [selectedOrg, setSelectedOrg] = useState(null);
     const [members, setMembers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [loadingMembers, setLoadingMembers] = useState(false);
 
     useEffect(() => {
         const fetchOrganizations = async () => {
             try {
-                const res = await fetch('http://localhost:8080/api/organizations', {
+                const res = await fetch("http://localhost:8080/api/organizations", {
                     headers: token ? { Authorization: `Bearer ${token}` } : {},
                 });
-                const data = await res.json();
-                setOrganizations(data);
+                if (res.ok) {
+                    const data = await res.json();
+                    setOrganizations(data);
+                    setFiltered(data);
+                }
             } catch (err) {
-                console.error('Error fetching organizations', err);
+                console.error("Error fetching organizations", err);
+            } finally {
+                setLoading(false);
             }
         };
+
         fetchOrganizations();
     }, [token]);
 
+    useEffect(() => {
+        setFiltered(
+            organizations.filter((org) =>
+                org.name.toLowerCase().includes(search.toLowerCase())
+            )
+        );
+    }, [search, organizations]);
+
     const handleOrgClick = async (org) => {
         setSelectedOrg(org);
+        setMembers([]);
+        setLoadingMembers(true);
+
         try {
-            const res = await fetch(`http://localhost:8080/api/organizations/${org.id}/members`, {
-                headers: token ? { Authorization: `Bearer ${token}` } : {},
-            });
-            const data = await res.json();
-            setMembers(data);
+            const res = await fetch(
+                `http://localhost:8080/api/organizations/${org.id}/members`,
+                {
+                    headers: token ? { Authorization: `Bearer ${token}` } : {},
+                }
+            );
+            if (res.ok) {
+                setMembers(await res.json());
+            }
         } catch (err) {
-            console.error('Error fetching members', err);
+            console.error("Error fetching members", err);
+        } finally {
+            setLoadingMembers(false);
         }
     };
 
-    const filtered = organizations.filter(org =>
-        org.name.toLowerCase().includes(search.toLowerCase())
-    );
+    if (loading) {
+        return (
+            <main className="min-h-screen bg-neutral-950 text-white flex items-center justify-center">
+                <p className="text-white/70">Loading organizations…</p>
+            </main>
+        );
+    }
 
     return (
-        <div className="min-h-screen bg-gray-800 text-white p-8">
-            <h1 className="text-4xl font-bold text-center mb-8">Explore Organizations</h1>
+        <main className="min-h-screen bg-neutral-950 text-white">
+            <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8 space-y-8">
+                <h1 className="text-3xl font-semibold text-center sm:text-4xl">
+                    Explore Organizations
+                </h1>
 
-            <div className="mb-6 flex justify-center">
-                <input
-                    type="text"
-                    placeholder="Search organizations..."
-                    className="w-1/2 px-4 py-2 rounded bg-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-600"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filtered.map(org => (
-                    <div
-                        key={org.id}
-                        className="bg-gray-900 p-4 rounded-lg shadow-lg cursor-pointer hover:scale-105 transition"
-                        onClick={() => handleOrgClick(org)}
-                    >
-                        {org.logo ? (
-                            <img
-                                src={`data:image/jpeg;base64,${org.logo}`}
-                                alt="logo"
-                                className="w-full h-40 object-contain mb-4 rounded"
-                            />
-                        ) : (
-                            <div className="w-full h-40 bg-gray-700 text-center flex items-center justify-center rounded mb-4">
-                                No Logo
-                            </div>
-                        )}
-                        <h2 className="text-2xl font-bold mb-2">{org.name}</h2>
-                        <p className="mb-1">
-                            <strong>Teams:</strong> {org.teamIds?.length || 0}
-                        </p>
-                        <p className="mb-1">
-                            <strong>Earnings:</strong> {org.totalEarnings?.toFixed(2) || '0.00'} €
-                        </p>
-                    </div>
-                ))}
-            </div>
-
-            {selectedOrg && (
-                <div className="mt-12 bg-gray-900 p-6 rounded-lg shadow-lg">
-                    <h3 className="text-2xl font-semibold mb-4">Members of {selectedOrg.name}</h3>
-                    {members.length > 0 ? (
-                        <ul className="space-y-2">
-                            {members.map(m => (
-                                <li key={m.teamId} className="border-b border-gray-700 pb-2">
-                                    <p><strong>Team:</strong> {m.teamId}</p>
-                                    <p><strong>Leader:</strong> {m.leaderId}</p>
-                                    <p><strong>Role:</strong> {m.role}</p>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p>No members found for this organization.</p>
-                    )}
+                {/* Search */}
+                <div className="max-w-md mx-auto">
+                    <input
+                        placeholder="Search organizations…"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+                    />
                 </div>
-            )}
-        </div>
+
+                {/* Grid */}
+                {filtered.length === 0 ? (
+                    <p className="text-center text-white/60">
+                        No organizations found.
+                    </p>
+                ) : (
+                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                        {filtered.map((org) => (
+                            <button
+                                key={org.id}
+                                onClick={() => handleOrgClick(org)}
+                                className="text-left rounded-2xl border border-white/10 bg-black/55 p-4 shadow-2xl backdrop-blur hover:border-white/20 transition"
+                            >
+                                <div className="h-36 rounded-xl overflow-hidden bg-white/5 flex items-center justify-center mb-4">
+                                    {org.logo ? (
+                                        <img
+                                            src={`data:image/jpeg;base64,${org.logo}`}
+                                            alt={org.name}
+                                            className="h-full w-full object-contain"
+                                        />
+                                    ) : (
+                                        <span className="text-sm text-white/40">
+                      No logo
+                    </span>
+                                    )}
+                                </div>
+
+                                <h2 className="text-lg font-semibold">{org.name}</h2>
+
+                                <p className="mt-1 text-sm text-white/70">
+                                    Teams: {org.teamIds?.length || 0}
+                                </p>
+
+                                <p className="text-sm text-white/60">
+                                    Earnings:{" "}
+                                    {(org.totalEarnings ?? 0).toFixed(2)} €
+                                </p>
+                            </button>
+                        ))}
+                    </div>
+                )}
+
+                {/* Members panel */}
+                {selectedOrg && (
+                    <Section title={`Members of ${selectedOrg.name}`}>
+                        {loadingMembers ? (
+                            <p className="text-sm text-white/70">
+                                Loading members…
+                            </p>
+                        ) : members.length > 0 ? (
+                            <ul className="space-y-3">
+                                {members.map((m, i) => (
+                                    <li
+                                        key={i}
+                                        className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm"
+                                    >
+                                        <p>
+                                            <span className="text-white/60">Team:</span>{" "}
+                                            {m.teamId}
+                                        </p>
+                                        <p>
+                                            <span className="text-white/60">Leader:</span>{" "}
+                                            {m.leaderId}
+                                        </p>
+                                        <p>
+                                            <span className="text-white/60">Role:</span>{" "}
+                                            {m.role}
+                                        </p>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : (
+                            <p className="text-sm text-white/60">
+                                No members found for this organization.
+                            </p>
+                        )}
+                    </Section>
+                )}
+            </section>
+        </main>
     );
 };
 

@@ -1,126 +1,180 @@
 import React, { useEffect, useState, useContext } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { AuthContext } from "../../security/AuthContext.jsx";
-import GameReviews from "./GameReviews.jsx"; // Import du composant GameReviews
+
+function Section({ title, children }) {
+    return (
+        <div className="rounded-2xl border border-white/10 bg-black/55 p-6 shadow-2xl backdrop-blur">
+            <h2 className="mb-4 text-lg font-semibold">{title}</h2>
+            {children}
+        </div>
+    );
+}
 
 const GameDetails = () => {
-    const { gameId } = useParams();
-    const { token } = useContext(AuthContext);
-    const [game, setGame] = useState(null);
-    const [error, setError] = useState("");
+    const { id } = useParams();
     const navigate = useNavigate();
+    const { token, user, isTokenExpired, logout } =
+        useContext(AuthContext);
+
+    const [game, setGame] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchGameDetails = async () => {
+        const fetchGame = async () => {
             try {
-                // Construction des headers : ajout de l'Authorization uniquement si un token est présent.
-                const headers = { "Content-Type": "application/json" };
-                if (token) {
+                const headers = {};
+                if (token && !isTokenExpired(token)) {
                     headers.Authorization = `Bearer ${token}`;
                 }
-                const response = await fetch(`http://localhost:8080/api/games/${gameId}`, {
-                    headers,
-                });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    setGame(data);
-                } else {
-                    const message = await response.text();
-                    setError(message || "Failed to fetch game details.");
-                }
-            } catch (err) {
-                setError("An error occurred while fetching game details.");
+                const res = await fetch(
+                    `http://localhost:8080/api/games/${id}`,
+                    { headers }
+                );
+
+                if (!res.ok) throw new Error();
+                setGame(await res.json());
+            } catch {
+                setGame(null);
+            } finally {
+                setLoading(false);
             }
         };
 
-        fetchGameDetails();
-    }, [gameId, token]);
+        fetchGame();
+    }, [id, token, isTokenExpired]);
 
-    if (error) {
-        return <div className="text-red-500 text-center">{error}</div>;
+    if (loading) {
+        return (
+            <main className="min-h-screen bg-neutral-950 text-white flex items-center justify-center">
+                <p className="text-white/70">Loading game…</p>
+            </main>
+        );
     }
 
     if (!game) {
-        return <div className="text-white text-center">Loading game details...</div>;
+        return (
+            <main className="min-h-screen bg-neutral-950 text-white flex items-center justify-center">
+                <p className="text-red-400">Game not found.</p>
+            </main>
+        );
     }
 
     return (
-        <div className="min-h-screen bg-gray-900 text-white p-8">
-            <div className="max-w-4xl mx-auto bg-gray-800 rounded-lg shadow-lg p-6">
-                {game.gameImage ? (
-                    <img
-                        src={`data:image/png;base64,${game.gameImage}`}
-                        alt={`${game.name} Logo`}
-                        className="w-full h-60 object-cover rounded"
-                    />
-                ) : (
-                    <div className="w-full h-60 bg-gray-700 flex items-center justify-center text-gray-400">
-                        No Image Available
+        <main className="min-h-screen bg-neutral-950 text-white">
+            <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8 space-y-6">
+                {/* Header */}
+                <div className="rounded-2xl border border-white/10 bg-black/55 p-6 shadow-2xl backdrop-blur flex flex-col lg:flex-row gap-6">
+                    <div className="h-56 w-full lg:w-96 rounded-xl overflow-hidden bg-white/5 flex items-center justify-center">
+                        {game.gameImage ? (
+                            <img
+                                src={`data:image/jpeg;base64,${game.gameImage}`}
+                                alt={game.name}
+                                className="h-full w-full object-cover"
+                            />
+                        ) : (
+                            <span className="text-sm text-white/40">
+                No image
+              </span>
+                        )}
                     </div>
-                )}
-                <h1 className="text-3xl font-bold mt-4">{game.name}</h1>
-                <p className="mt-4">
-                    <strong>Type:</strong> {game.type}
-                </p>
-                <p>
-                    <strong>Description:</strong> {game.description}
-                </p>
-                <p>
-                    <strong>Year of Existence:</strong> {game.yearOfExistence}
-                </p>
-                <p>
-                    <strong>Last Tournament Date:</strong> {game.lastTournamentDate || "N/A"}
-                </p>
-                <p>
-                    <strong>Best Player ID:</strong> {game.bestPlayerId || "N/A"}
-                </p>
-                <p>
-                    <strong>Best Team ID:</strong> {game.bestTeamId || "N/A"}
-                </p>
-                <p>
-                    <strong>Total Players:</strong> {game.totalPlayers}
-                </p>
-                <p>
-                    <strong>Max Players Per Team:</strong> {game.maxPlayersPerTeam}
-                </p>
-                <p>
-                    <strong>Publisher:</strong> {game.publisher}
-                </p>
-                <p>
-                    <strong>Platforms:</strong> {game.platforms ? game.platforms.join(", ") : "N/A"}
-                </p>
-                <p>
-                    <strong>Organizer ID:</strong> {game.organizerId}
-                </p>
-                <p>
-                    <strong>Tournament IDs:</strong>{" "}
-                    {game.tournamentIds && game.tournamentIds.length > 0
-                        ? game.tournamentIds.join(", ")
-                        : "No Tournaments"}
-                </p>
-                {game.rules && (
-                    <p>
-                        <strong>Rules:</strong> {game.rules}
-                    </p>
-                )}
-                {game.tutorial && (
-                    <p>
-                        <strong>Tutorial:</strong> {game.tutorial}
-                    </p>
-                )}
-                <div className="text-right mt-6">
+
+                    <div className="flex-1">
+                        <h1 className="text-2xl font-semibold sm:text-3xl">
+                            {game.name}
+                        </h1>
+                        <p className="mt-2 text-sm text-white/70">
+                            {game.description}
+                        </p>
+
+                        <div className="mt-4 flex flex-wrap gap-4 text-sm text-white/70">
+              <span>
+                <strong className="text-white">Type:</strong>{" "}
+                  {game.type}
+              </span>
+                            <span>
+                <strong className="text-white">
+                  Max players/team:
+                </strong>{" "}
+                                {game.maxPlayersPerTeam}
+              </span>
+                            <span>
+                <strong className="text-white">Year:</strong>{" "}
+                                {game.yearOfExistence}
+              </span>
+                            <span>
+                <strong className="text-white">
+                  Publisher:
+                </strong>{" "}
+                                {game.publisher}
+              </span>
+                        </div>
+
+                        {user?.role === "admin" && (
+                            <div className="mt-6">
+                                <Link
+                                    to={`/games/modify/${game.id}`}
+                                    className="inline-flex rounded-xl bg-white px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-white/90"
+                                >
+                                    Edit Game
+                                </Link>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Grid */}
+                <div className="grid gap-6 lg:grid-cols-3">
+                    {/* Left */}
+                    <div className="space-y-6">
+                        <Section title="Platforms">
+                            {game.platforms?.length ? (
+                                <ul className="flex flex-wrap gap-2">
+                                    {game.platforms.map((p, i) => (
+                                        <li
+                                            key={i}
+                                            className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-sm"
+                                        >
+                                            {p}
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-sm text-white/60">
+                                    No platforms specified.
+                                </p>
+                            )}
+                        </Section>
+                    </div>
+
+                    {/* Right */}
+                    <div className="lg:col-span-2 space-y-6">
+                        <Section title="Rules">
+                            <p className="text-sm text-white/80 whitespace-pre-line">
+                                {game.rules || "No rules provided."}
+                            </p>
+                        </Section>
+
+                        <Section title="Tutorial">
+                            <p className="text-sm text-white/80 whitespace-pre-line">
+                                {game.tutorial || "No tutorial provided."}
+                            </p>
+                        </Section>
+                    </div>
+                </div>
+
+                {/* Back */}
+                <div className="flex justify-center">
                     <button
                         onClick={() => navigate(-1)}
-                        className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded"
+                        className="rounded-xl border border-white/15 bg-white/5 px-5 py-2 text-sm font-semibold hover:bg-white/10"
                     >
-                        Back
+                        Go back
                     </button>
                 </div>
-            </div>
-            {/* Inclusion de la section des revues */}
-            <GameReviews gameId={game.id} gameName={game.name} />
-        </div>
+            </section>
+        </main>
     );
 };
 

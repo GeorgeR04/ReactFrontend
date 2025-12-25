@@ -1,51 +1,101 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+
+function Card({ children }) {
+    return (
+        <div className="rounded-2xl border border-white/10 bg-black/55 p-4 shadow-2xl backdrop-blur">
+            {children}
+        </div>
+    );
+}
 
 const PopularGames = () => {
-    const [popularGames, setPopularGames] = useState([]);
-    const [error, setError] = useState("");
+    const [games, setGames] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchPopularGames = async () => {
             try {
-                const response = await fetch("http://localhost:8080/api/games/popular");
-                if (response.ok) {
-                    const data = await response.json();
-                    setPopularGames(data);
-                } else {
-                    setError("Failed to fetch popular games.");
+                const res = await fetch(
+                    "http://localhost:8080/api/games/popular"
+                );
+                if (res.ok) {
+                    setGames(await res.json());
                 }
-            } catch (err) {
-                setError("An error occurred while fetching popular games.");
+            } catch {
+                setGames([]);
+            } finally {
+                setLoading(false);
             }
         };
 
         fetchPopularGames();
     }, []);
 
+    if (loading) {
+        return (
+            <main className="min-h-screen bg-neutral-950 text-white flex items-center justify-center">
+                <p className="text-white/70">Loading popular games…</p>
+            </main>
+        );
+    }
+
     return (
-        <div className="popular-games-section my-8">
-            <h2 className="text-2xl font-bold mb-4">Popular & Trending Games</h2>
-            {error && <p className="text-red-500">{error}</p>}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {popularGames.map((game) => (
-                    <div key={game.id} className="bg-gray-900 rounded-lg p-4 shadow-lg">
-                        <h3 className="text-xl font-bold">{game.name}</h3>
-                        {game.gameImage ? (
-                            <img
-                                src={`data:image/png;base64,${game.gameImage}`}
-                                alt={`${game.name} Logo`}
-                                className="w-full h-40 object-cover mt-2 rounded"
-                            />
-                        ) : (
-                            <div className="w-full h-40 bg-gray-700 flex items-center justify-center text-gray-400 mt-2 rounded">
-                                No Image
-                            </div>
-                        )}
-                        <p className="mt-2">Players: {game.totalPlayers}</p>
+        <main className="min-h-screen bg-neutral-950 text-white">
+            <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8 space-y-8">
+                <h1 className="text-3xl font-semibold text-center sm:text-4xl">
+                    Popular Games
+                </h1>
+
+                {games.length === 0 ? (
+                    <p className="text-center text-white/60">
+                        No popular games available.
+                    </p>
+                ) : (
+                    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                        {games.map((game) => (
+                            <Card key={game.id}>
+                                <div className="h-40 rounded-xl overflow-hidden bg-white/5 flex items-center justify-center mb-4">
+                                    {game.gameImage ? (
+                                        <img
+                                            src={`data:image/jpeg;base64,${game.gameImage}`}
+                                            alt={game.name}
+                                            className="h-full w-full object-cover"
+                                        />
+                                    ) : (
+                                        <span className="text-sm text-white/40">
+                      No image
+                    </span>
+                                    )}
+                                </div>
+
+                                <h2 className="text-lg font-semibold">
+                                    {game.name}
+                                </h2>
+
+                                <p className="mt-1 text-sm text-white/70 line-clamp-2">
+                                    {game.description}
+                                </p>
+
+                                <div className="mt-4 flex justify-between items-center text-sm text-white/60">
+                                    <span>{game.type}</span>
+                                    <span>{game.yearOfExistence}</span>
+                                </div>
+
+                                <div className="mt-4">
+                                    <Link
+                                        to={`/games/${game.id}`}
+                                        className="inline-flex rounded-xl bg-white px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-white/90"
+                                    >
+                                        View Details
+                                    </Link>
+                                </div>
+                            </Card>
+                        ))}
                     </div>
-                ))}
-            </div>
-        </div>
+                )}
+            </section>
+        </main>
     );
 };
 

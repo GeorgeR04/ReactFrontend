@@ -19,7 +19,7 @@ import TeamExplore from "./pages/team/TeamExplore.jsx";
 import TeamCreate from "./pages/team/TeamCreate.jsx";
 import GameExplore from "./pages/game/GameExplore.jsx";
 import GameCreate from "./pages/game/GameCreate.jsx";
-import GameModify from "./pages/game/GameModify.jsx";
+import GameEdit from "./pages/game/GameEdit.jsx";
 import GameDetails from "./pages/game/GameDetails.jsx";
 import TournamentGEM from "./pages/tournament/gemtournament/TournamentGEM.jsx";
 import GemMajorPage from './pages/tournament/gemtournament/GemMajorPage.jsx';
@@ -29,6 +29,8 @@ import ScrollToTop from "./ScrollToTop.jsx";
 import FriendChatPage from "./pages/chat/FriendChatPage.jsx";
 import OrganizationExplore from "./pages/organization/OrganizationExplore.jsx";
 import TeamDetail from "./pages/team/TeamDetail.jsx";
+import SettingsPage from "./pages/user/SettingsPage.jsx";
+
 function App() {
     const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
 
@@ -57,7 +59,7 @@ function App() {
                         <Route path="/games" element={<Games />} />
                         <Route path="/games/explore" element={<GameExplore />}></Route>
                         <Route path="/games/create" element={<GameCreate/>}></Route>
-                        <Route path="/games/:gameId/edit" element={<GameModify/>}></Route>
+                        <Route path="/games/:gameId/edit" element={<GameEdit/>}></Route>
                         <Route path="/games/:gameId" element={<GameDetails />} />
                         <Route path="/teams" element={<Teams />} />
                         <Route path="/teams/explore" element={<TeamExplore />} />
@@ -68,6 +70,9 @@ function App() {
                             <Route path="/chat" element={<FriendChatPage />} />
                         </Route>
                         <Route element={<ProtectedRoute />}>
+                            <Route element={<ProtectedRoute />}>
+                                <Route path="/user/settings" element={<SettingsPage />} />
+                            </Route>
                             <Route
                                 path="/user/:username"
                                 element={<UserPage isRoleModalOpen={isRoleModalOpen} setIsRoleModalOpen={setIsRoleModalOpen} />}

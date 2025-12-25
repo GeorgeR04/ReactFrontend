@@ -186,6 +186,16 @@ const Header = () => {
 
                                             <button
                                                 onClick={() => {
+                                                    navigate("/user/settings");
+                                                    setIsDropdownOpen(false);
+                                                }}
+                                                className="block px-4 py-2 w-full text-left transition duration-200 hover:bg-indigo-600 hover:text-white hover:pl-5"
+                                            >
+                                                Settings
+                                            </button>
+
+                                            <button
+                                                onClick={() => {
                                                     navigate("/chat");
                                                     setIsDropdownOpen(false);
                                                 }}

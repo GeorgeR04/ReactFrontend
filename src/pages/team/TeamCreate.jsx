@@ -1,41 +1,43 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AuthContext } from '../../security/AuthContext.jsx';
+import React, { useState, useEffect, useContext } from "react";
+import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../../security/AuthContext.jsx";
+import ImagePicker from "../../components/ui/ImagePicker.jsx";
+
+function Section({ title, children }) {
+    return (
+        <div className="rounded-2xl border border-white/10 bg-black/55 p-6 shadow-2xl backdrop-blur">
+            <h2 className="mb-4 text-lg font-semibold">{title}</h2>
+            <div className="space-y-4">{children}</div>
+        </div>
+    );
+}
 
 const TeamCreate = () => {
     const { token, user, isTokenExpired, logout } = useContext(AuthContext);
-    const [name, setName] = useState('');
-    const [gameId, setGameId] = useState('');
-    const [games, setGames] = useState([]); // Games fetched from backend
-    const [image, setImage] = useState(null); // Base64 image
-    const [loadingGames, setLoadingGames] = useState(true); // Loading indicator
     const navigate = useNavigate();
+
+    const [games, setGames] = useState([]);
+    const [loadingGames, setLoadingGames] = useState(true);
+
+    const [form, setForm] = useState({
+        name: "",
+        gameId: "",
+        teamLogo: null,
+    });
 
     useEffect(() => {
         if (!token || isTokenExpired(token)) {
             logout();
-            alert('Session expired. Please log in again.');
-            navigate('/login');
+            navigate("/login");
             return;
         }
 
         const fetchGames = async () => {
             try {
-                setLoadingGames(true);
-                const response = await fetch('http://localhost:8080/api/games/list', {
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                    },
+                const res = await fetch("http://localhost:8080/api/games/list", {
+                    headers: { Authorization: `Bearer ${token}` },
                 });
-
-                if (response.ok) {
-                    const gamesData = await response.json();
-                    setGames(gamesData);
-                } else if (response.status === 403) {
-                    alert('You are not authorized to view games.');
-                }
-            } catch (error) {
-                console.error('Error fetching games:', error);
+                if (res.ok) setGames(await res.json());
             } finally {
                 setLoadingGames(false);
             }
@@ -44,113 +46,96 @@ const TeamCreate = () => {
         fetchGames();
     }, [token, isTokenExpired, logout, navigate]);
 
-    const handleImageChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = () => setImage(reader.result.split(',')[1]);
-            reader.readAsDataURL(file);
-        }
-    };
+    const update = (key, value) =>
+        setForm((f) => ({ ...f, [key]: value }));
 
     const handleCreate = async () => {
-        if (!token || isTokenExpired(token)) {
-            logout();
-            alert('Session expired. Please log in again.');
-            navigate('/login');
+        if (!form.name || !form.gameId) {
+            alert("Please fill all required fields.");
             return;
         }
 
-        if (!name) {
-            alert('You must specify a team name.');
-            return;
-        }
-
-        if (!gameId) {
-            alert('You must select a game.');
-            return;
-        }
+        const payload = {
+            name: form.name,
+            gameId: form.gameId,
+            teamLeaderId: user.username,
+            playerIds: [user.username],
+            teamLogo: form.teamLogo,
+        };
 
         try {
-            const payload = {
-                name,
-                gameId,
-                playerIds: [user.username], // Set logged-in user as the first player
-                teamLeaderId: user.username, // Logged-in user is the team leader
-                teamLogo: image, // Base64-encoded image string
-            };
-
-            console.log('Payload:', payload);
-
-            const response = await fetch('http://localhost:8080/api/teams', {
-                method: 'POST',
+            const res = await fetch("http://localhost:8080/api/teams", {
+                method: "POST",
                 headers: {
-                    'Content-Type': 'application/json',
+                    "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify(payload),
             });
 
-            if (response.ok) {
-                alert('Team created successfully!');
-                navigate('/teams/explore'); // Redirect to team exploration page
-            } else {
-                const errorText = await response.text();
-                console.error('Server Error:', errorText);
-                alert(`Failed to create team: ${errorText}`);
+            if (!res.ok) {
+                const txt = await res.text();
+                alert(txt);
+                return;
             }
-        } catch (error) {
-            console.error('Error creating team:', error);
-            alert('An error occurred while creating the team.');
+
+            navigate("/teams/explore");
+        } catch {
+            alert("Failed to create team.");
         }
     };
 
     return (
-        <div className="p-8 text-white bg-gray-800">
-            <h1 className="text-4xl font-bold text-center mb-8">Create Team</h1>
-            <div className="max-w-md mx-auto space-y-4">
-                <input
-                    type="text"
-                    placeholder="Team Name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full px-4 py-2 rounded bg-gray-900 text-white"
-                />
-                <div>
-                    <label className="block mb-2 font-bold">Select a Game</label>
+        <main className="min-h-screen bg-neutral-950 text-white">
+            <section className="mx-auto max-w-4xl px-4 py-12 space-y-6">
+                <h1 className="text-3xl font-semibold text-center sm:text-4xl">
+                    Create Team
+                </h1>
+
+                <Section title="Team Information">
+                    <input
+                        placeholder="Team name"
+                        value={form.name}
+                        onChange={(e) => update("name", e.target.value)}
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
+                    />
+
                     <select
-                        value={gameId}
-                        onChange={(e) => setGameId(e.target.value)}
-                        className="w-full px-4 py-2 rounded bg-gray-900 text-white"
-                        disabled={loadingGames || games.length === 0}
+                        value={form.gameId}
+                        onChange={(e) => update("gameId", e.target.value)}
+                        disabled={loadingGames}
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
                     >
-                        <option value="" disabled>
-                            {loadingGames ? 'Loading games...' : 'Select Game'}
+                        <option value="">
+                            {loadingGames ? "Loading games…" : "Select game"}
                         </option>
-                        {games.map((game) => (
-                            <option key={game.id} value={game.id}>
-                                {game.name}
+                        {games.map((g) => (
+                            <option key={g.id} value={g.id}>
+                                {g.name}
                             </option>
                         ))}
                     </select>
-                </div>
-                <div>
-                    <label className="block mb-2 font-bold">Team Logo</label>
-                    <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                        className="w-full px-4 py-2 text-white bg-gray-900 rounded"
+                </Section>
+
+                <Section title="Team Logo">
+                    <ImagePicker
+                        label="Choose team logo"
+                        value={form.teamLogo}
+                        onChange={(img) => update("teamLogo", img)}
                     />
+
+                </Section>
+
+                <div className="flex justify-center">
+                    <button
+                        onClick={handleCreate}
+                        className="rounded-xl bg-white px-6 py-2.5 text-sm font-semibold text-neutral-950 hover:bg-white/90"
+                    >
+                        Create Team
+                    </button>
                 </div>
-                <button
-                    onClick={handleCreate}
-                    className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded"
-                >
-                    Create Team
-                </button>
-            </div>
-        </div>
+            </section>
+        </main>
     );
 };
 

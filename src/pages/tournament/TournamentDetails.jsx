@@ -1,7 +1,16 @@
-import React, { useEffect, useState, useContext } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { AuthContext } from '../../security/AuthContext.jsx';
+import React, { useEffect, useState, useContext } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { AuthContext } from "../../security/AuthContext.jsx";
 import PlayoffBracket from "./PlayoffBracket.jsx";
+
+function Section({ title, children }) {
+    return (
+        <div className="rounded-2xl border border-white/10 bg-black/55 p-5 shadow-2xl backdrop-blur">
+            <h2 className="mb-3 text-lg font-semibold">{title}</h2>
+            {children}
+        </div>
+    );
+}
 
 const TournamentDetails = () => {
     const { id } = useParams();
@@ -15,216 +24,162 @@ const TournamentDetails = () => {
     const [matches, setMatches] = useState([]);
 
     useEffect(() => {
-        const fetchTournament = async () => {
+        const headers = { "Content-Type": "application/json" };
+        if (token && !isTokenExpired(token)) {
+            headers.Authorization = `Bearer ${token}`;
+        }
+
+        const fetchAll = async () => {
             try {
-                const headers = {
-                    'Content-Type': 'application/json',
-                };
-                if (token && !isTokenExpired(token)) {
-                    headers.Authorization = `Bearer ${token}`;
-                }
+                const tRes = await fetch(
+                    `http://localhost:8080/api/tournaments/${id}`,
+                    { headers }
+                );
+                if (!tRes.ok) throw new Error();
+                const tData = await tRes.json();
+                setTournament(tData);
 
-                const response = await fetch(`http://localhost:8080/api/tournaments/${id}`, { headers });
-                if (response.ok) {
-                    const data = await response.json();
-                    setTournament(data);
+                const [lm, com, mat] = await Promise.all([
+                    fetch(`http://localhost:8080/api/tournaments/${id}/lastMatch`, { headers }),
+                    fetch(`http://localhost:8080/api/tournaments/${id}/commentary`, { headers }),
+                    fetch(`http://localhost:8080/api/tournaments/${id}/matches`, { headers }),
+                ]);
 
-                    fetchLastMatch();
-                    fetchCommentary();
-                    fetchMatches();
-                } else if (response.status === 403) {
-                    console.error('Access forbidden: You may need to log in.');
-                } else {
-                    console.error(`Failed to fetch tournament details: ${response.status}`);
-                }
-            } catch (error) {
-                console.error('Error fetching tournament details:', error);
+                if (lm.ok) setLastMatch(await lm.json());
+                if (com.ok) setCommentary(await com.json());
+                if (mat.ok) setMatches(await mat.json());
+            } catch {
+                setTournament(null);
             } finally {
                 setLoading(false);
             }
         };
 
-        const fetchLastMatch = async () => {
-            try {
-                const headers = {
-                    'Content-Type': 'application/json',
-                };
-                if (token && !isTokenExpired(token)) {
-                    headers.Authorization = `Bearer ${token}`;
-                }
-
-                const response = await fetch(`http://localhost:8080/api/tournaments/${id}/lastMatch`, { headers });
-                if (response.ok) {
-                    const data = await response.json();
-                    setLastMatch(data);
-                } else {
-                    console.error('Failed to fetch last match details.');
-                }
-            } catch (error) {
-                console.error('Error fetching last match:', error);
-            }
-        };
-
-        const fetchCommentary = async () => {
-            try {
-                const headers = {
-                    'Content-Type': 'application/json',
-                };
-                if (token && !isTokenExpired(token)) {
-                    headers.Authorization = `Bearer ${token}`;
-                }
-
-                const response = await fetch(`http://localhost:8080/api/tournaments/${id}/commentary`, { headers });
-                if (response.ok) {
-                    const data = await response.json();
-                    setCommentary(data);
-                } else {
-                    console.error('Failed to fetch commentary.');
-                }
-            } catch (error) {
-                console.error('Error fetching commentary:', error);
-            }
-        };
-
-        const fetchMatches = async () => {
-            try {
-                const headers = {
-                    'Content-Type': 'application/json',
-                };
-                if (token && !isTokenExpired(token)) {
-                    headers.Authorization = `Bearer ${token}`;
-                }
-
-                const response = await fetch(`http://localhost:8080/api/tournaments/${id}/matches`, { headers });
-                if (response.ok) {
-                    const data = await response.json();
-                    setMatches(data);
-                } else {
-                    console.error('Failed to fetch matches.');
-                }
-            } catch (error) {
-                console.error('Error fetching matches:', error);
-            }
-        };
-
-        fetchTournament();
+        fetchAll();
     }, [id, token, isTokenExpired]);
 
     if (loading) {
-        return <div className="text-center text-white">Loading tournament details...</div>;
+        return (
+            <main className="min-h-screen bg-neutral-950 text-white flex items-center justify-center">
+                <p className="text-white/70">Loading tournament…</p>
+            </main>
+        );
     }
 
     if (!tournament) {
-        return <div className="text-center text-red-500">Unable to load tournament details.</div>;
+        return (
+            <main className="min-h-screen bg-neutral-950 text-white flex items-center justify-center">
+                <p className="text-red-400">Unable to load tournament details.</p>
+            </main>
+        );
     }
+
     return (
-        <div className="p-8 text-white bg-gray-800 grid grid-cols-3 gap-4">
-            {/* Left Section: All tournament info */}
-            <div className="col-span-1 bg-gray-900 p-4 rounded-lg">
-                <h2 className="text-2xl font-bold mb-4">Tournament Info</h2>
-                <p>Name: {tournament.name}</p>
-                <p>Description: {tournament.description}</p>
-                <p>Type: {tournament.type}</p>
-                <p>Status: {tournament.status}</p>
-                <p>Game: {tournament.gameName}</p>
-                <p>Cash Prize: ${tournament.cashPrize}</p>
-                <p>Trust Factor Requirement: {tournament.trustFactorRequirement}</p>
-                <p>Min Rank: {tournament.minRankRequirement}</p>
-                <p>Max Rank: {tournament.maxRankRequirement}</p>
-
-                {/* Organizers */}
-                <p>Organizers:</p>
-                <ul className="list-disc ml-5">
-                    {tournament.organizerNames && tournament.organizerNames.length > 0 ? (
-                        tournament.organizerNames.map((organizer, index) => (
-                            <li key={index}>{organizer}</li>
-                        ))
-                    ) : (
-                        <p>No organizers listed.</p>
-                    )}
-                </ul>
-
-                {/* Participants */}
-                <p>Participants: {tournament.participants?.length || 0}</p>
-            </div>
-
-
-            {/* Middle Section: Tournament Rules, Playoff Bracket, and Matches */}
-            <div className="col-span-2">
-                {/* Tournament Rules */}
-                <div className="mb-4 bg-gray-900 p-4 rounded-lg">
-                    <h2 className="text-2xl font-bold mb-4">Tournament Rules</h2>
-                    <p>{tournament.rules || 'No specific rules provided.'}</p>
-                </div>
-
-                {/* Playoff Bracket */}
-                <div className="mb-4 bg-gray-900 p-4 rounded-lg">
-                    <PlayoffBracket tournamentId={id} />
-                </div>
-
-                {/* Match Results Area */}
-                <div className="mb-4 bg-gray-900 p-4 rounded-lg">
-                    <h2 className="text-2xl font-bold mb-4">Match Results</h2>
-                    {matches.length > 0 ? (
-                        matches.map((match) => (
-                            <div key={match.id} className="mb-4">
-                                <p>
-                                    Match {match.id}: {match.team1} vs {match.team2}
-                                </p>
-                                {user?.role === 'organizer' ? (
-                                    <div className="flex space-x-4 mt-2">
-                                        <button
-                                            onClick={() => handleSetWinner(match.id, match.team1Id)}
-                                            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded"
-                                        >
-                                            Set {match.team1} as Winner
-                                        </button>
-                                        <button
-                                            onClick={() => handleSetWinner(match.id, match.team2Id)}
-                                            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded"
-                                        >
-                                            Set {match.team2} as Winner
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <p>Winner: {match.winner || 'Not decided yet'}</p>
-                                )}
-                            </div>
-                        ))
-                    ) : (
-                        <p>No matches available.</p>
-                    )}
-                </div>
-            </div>
-
-            {/* Bottom Right Section: Last Match */}
-            <div className="col-span-1 bg-gray-900 p-4 rounded-lg">
-                <h2 className="text-2xl font-bold mb-4">Last Match</h2>
-                {lastMatch ? (
-                    <p>
-                        {lastMatch.team1} vs {lastMatch.team2} - Winner: {lastMatch.winner}
+        <main className="min-h-screen bg-neutral-950 text-white">
+            <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 space-y-6">
+                {/* Header */}
+                <div className="rounded-2xl border border-white/10 bg-black/55 p-6 shadow-2xl backdrop-blur">
+                    <h1 className="text-2xl font-semibold sm:text-3xl">
+                        {tournament.name}
+                    </h1>
+                    <p className="mt-2 text-white/70 max-w-3xl">
+                        {tournament.description}
                     </p>
-                ) : (
-                    <p>No match data available.</p>
-                )}
-            </div>
+                </div>
 
-            {/* Commentary Section */}
-            <div className="col-span-1 bg-gray-900 p-4 rounded-lg">
-                <h2 className="text-2xl font-bold mb-4">Commentary</h2>
-                {commentary.length > 0 ? (
-                    <ul>
-                        {commentary.map((comment, index) => (
-                            <li key={index} className="mb-2">
-                                {comment}
-                            </li>
-                        ))}
-                    </ul>
-                ) : (
-                    <p>No commentary available.</p>
-                )}
-            </div>
-        </div>
+                {/* Grid */}
+                <div className="grid gap-6 lg:grid-cols-3">
+                    {/* Left */}
+                    <div className="space-y-6">
+                        <Section title="Overview">
+                            <ul className="text-sm text-white/80 space-y-1">
+                                <li>Type: {tournament.type}</li>
+                                <li>Status: {tournament.status}</li>
+                                <li>Game: {tournament.gameName}</li>
+                                <li>Cash Prize: ${tournament.cashPrize}</li>
+                                <li>Trust Factor: {tournament.trustFactorRequirement}</li>
+                                <li>
+                                    Rank: {tournament.minRankRequirement} –{" "}
+                                    {tournament.maxRankRequirement}
+                                </li>
+                            </ul>
+                        </Section>
+
+                        <Section title="Organizers">
+                            {tournament.organizerNames?.length ? (
+                                <ul className="list-disc ml-4 text-sm text-white/80">
+                                    {tournament.organizerNames.map((o, i) => (
+                                        <li key={i}>{o}</li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-sm text-white/60">No organizers listed.</p>
+                            )}
+                        </Section>
+
+                        <Section title="Last Match">
+                            {lastMatch ? (
+                                <p className="text-sm">
+                                    {lastMatch.team1} vs {lastMatch.team2} — Winner:{" "}
+                                    <span className="font-semibold">{lastMatch.winner}</span>
+                                </p>
+                            ) : (
+                                <p className="text-sm text-white/60">No data available.</p>
+                            )}
+                        </Section>
+                    </div>
+
+                    {/* Right */}
+                    <div className="lg:col-span-2 space-y-6">
+                        <Section title="Rules">
+                            <p className="text-sm text-white/80">
+                                {tournament.rules || "No specific rules provided."}
+                            </p>
+                        </Section>
+
+                        <Section title="Playoff Bracket">
+                            <PlayoffBracket tournamentId={id} />
+                        </Section>
+
+                        <Section title="Matches">
+                            {matches.length ? (
+                                <div className="space-y-3">
+                                    {matches.map((m) => (
+                                        <div
+                                            key={m.id}
+                                            className="rounded-xl border border-white/10 bg-white/5 p-3"
+                                        >
+                                            <p className="text-sm">
+                                                {m.team1} vs {m.team2}
+                                            </p>
+                                            <p className="text-xs text-white/60">
+                                                Winner: {m.winner || "TBD"}
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-white/60">No matches available.</p>
+                            )}
+                        </Section>
+
+                        <Section title="Commentary">
+                            {commentary.length ? (
+                                <ul className="space-y-2 text-sm text-white/80">
+                                    {commentary.map((c, i) => (
+                                        <li key={i}>• {c}</li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-sm text-white/60">
+                                    No commentary available.
+                                </p>
+                            )}
+                        </Section>
+                    </div>
+                </div>
+            </section>
+        </main>
     );
 };
 
