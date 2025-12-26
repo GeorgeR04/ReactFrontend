@@ -194,7 +194,7 @@ const GameExplore = () => {
                     <select
                         value={filterType}
                         onChange={(e) => setFilterType(e.target.value)}
-                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                        className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 [&>option]:bg-neutral-900 [&>option]:text-white"
                     >
                         <option value="">All Types</option>
                         {TYPES.map((t) => (

@@ -1,12 +1,22 @@
-import React, { useContext } from 'react';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { AuthContext } from './AuthContext';
+import React, { useContext } from "react";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { AuthContext } from "./AuthContext";
 
 const ProtectedRoute = () => {
-    const { token } = useContext(AuthContext);
+    const { token, isTokenExpired } = useContext(AuthContext);
     const location = useLocation();
 
-    return token ? <Outlet /> : <Navigate to="/login" state={{ from: location }} replace />;
+    if (!token || isTokenExpired(token)) {
+        return (
+            <Navigate
+                to="/login"
+                state={{ from: location }}
+                replace
+            />
+        );
+    }
+
+    return <Outlet />;
 };
 
 export default ProtectedRoute;

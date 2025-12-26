@@ -1,10 +1,9 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Menu, X ,Bell } from "lucide-react";
 import { User, MessageSquare, Shield, LogOut } from "lucide-react";
 import { AuthContext } from "../security/AuthContext.jsx";
 import logoImage from "../assets/Image/Logo1.png";
-import RoleSelectionModal from "./RoleSelectionModal";
 
 function cx(...classes) {
     return classes.filter(Boolean).join(" ");
@@ -14,9 +13,9 @@ const Header = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { token, user, logout } = useContext(AuthContext);
+    const [pendingCount, setPendingCount] = useState(0);
 
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
 
     const dropdownRef = useRef(null);
@@ -60,6 +59,36 @@ const Header = () => {
             document.removeEventListener("keydown", onKeyDown);
         };
     }, [isDropdownOpen]);
+    useEffect(() => {
+        if (!token || !user) return;
+
+        const isModerator =
+            user.role === "moderator" || user.role === "organizer_moderator";
+
+        if (!isModerator) return;
+
+        const fetchPending = async () => {
+            try {
+                const res = await fetch(
+                    "http://localhost:8080/api/game-requests/count-pending",
+                    {
+                        headers: { Authorization: `Bearer ${token}` },
+                    }
+                );
+                if (!res.ok) return;
+                const count = await res.json();
+                setPendingCount(Number(count) || 0);
+            } catch {
+                // silence (badge non critique)
+            }
+        };
+
+        fetchPending();
+
+        // refresh léger toutes les 30s
+        const interval = setInterval(fetchPending, 30000);
+        return () => clearInterval(interval);
+    }, [token, user]);
 
     const navLinkBase =
         "relative text-lg font-medium transition duration-300 transform hover:scale-105 text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 rounded-lg px-2 py-1";
@@ -159,9 +188,24 @@ const Header = () => {
 
                         {/* Profile and Dropdown (old style, but click + a11y) */}
                         {/* Profile and Dropdown */}
+
                         <div className="relative flex items-center space-x-4">
                             {token && user ? (
                                 <>
+                                    {(user?.role === "moderator" || user?.role === "organizer_moderator") && (
+                                        <button
+                                            onClick={() => navigate("/moderator/game-requests")}
+                                            className="relative rounded-xl p-2 text-white hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                                            aria-label="Pending game requests"
+                                        >
+                                            <Bell className="h-5 w-5" />
+                                            {pendingCount > 0 && (
+                                                <span className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-xs font-bold text-white">
+                                                    {pendingCount}
+                                                </span>
+                                            )}
+                                        </button>
+                                    )}
                                     <button
                                         type="button"
                                         onClick={() => setIsDropdownOpen((v) => !v)}
@@ -203,19 +247,6 @@ const Header = () => {
                                             >
                                                 Chat
                                             </button>
-
-                                            {user?.role !== "moderator" && (
-                                                <button
-                                                    className="block px-4 py-2 w-full text-left transition duration-200 hover:bg-purple-600 hover:text-white hover:pl-5"
-                                                    onClick={() => {
-                                                        setIsRoleModalOpen(true);
-                                                        setIsDropdownOpen(false);
-                                                    }}
-                                                >
-                                                    Select Role
-                                                </button>
-                                            )}
-
                                             <button
                                                 className="block px-4 py-2 w-full text-left transition duration-200 hover:bg-pink-600 hover:text-white hover:pl-5"
                                                 onClick={() => {
@@ -275,13 +306,6 @@ const Header = () => {
                     </div>
                 )}
             </header>
-
-            {/* Role Selection Modal */}
-            <RoleSelectionModal
-                isOpen={isRoleModalOpen}
-                onClose={() => setIsRoleModalOpen(false)}
-                onSave={() => alert("Role details saved!")}
-            />
         </>
     );
 };

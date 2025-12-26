@@ -13,7 +13,7 @@ function Section({ title, children }) {
 }
 
 const GameCreate = () => {
-    const { token, user } = useContext(AuthContext);
+    const { token } = useContext(AuthContext);
     const navigate = useNavigate();
 
     const [form, setForm] = useState({
@@ -29,6 +29,9 @@ const GameCreate = () => {
         gameImage: null,
     });
 
+    const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
+
     const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
     const togglePlatform = (p) =>
@@ -39,9 +42,14 @@ const GameCreate = () => {
                 : [...form.platforms, p]
         );
 
-    const handleCreate = async () => {
+    /* =========================
+       SUBMIT GAME REQUEST
+       ========================= */
+    const handleSubmit = async () => {
+        setError("");
+
         if (!form.name || !form.type || !form.description || !form.gameImage) {
-            alert("Please fill all required fields.");
+            setError("Please fill all required fields.");
             return;
         }
 
@@ -51,15 +59,21 @@ const GameCreate = () => {
             description: form.description,
             rules: form.rules,
             tutorial: form.tutorial,
-            maxPlayersPerTeam: parseInt(form.maxPlayers),
-            yearOfExistence: parseInt(form.yearOfExistence),
+            maxPlayersPerTeam: form.maxPlayers
+                ? parseInt(form.maxPlayers, 10)
+                : null,
+            yearOfExistence: form.yearOfExistence
+                ? parseInt(form.yearOfExistence, 10)
+                : null,
             publisher: form.publisher,
             platforms: form.platforms,
             gameImage: form.gameImage,
         };
 
+        setLoading(true);
+
         try {
-            const res = await fetch("http://localhost:8080/api/games/create", {
+            const res = await fetch("http://localhost:8080/api/game-requests", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -69,13 +83,16 @@ const GameCreate = () => {
             });
 
             if (!res.ok) {
-                alert(await res.text());
-                return;
+                const msg = await res.text();
+                throw new Error(msg || "Failed to submit game request.");
             }
 
+            // succès → retour à l'explore
             navigate("/games/explore");
-        } catch {
-            alert("Failed to create game.");
+        } catch (e) {
+            setError(e.message || "Submission failed.");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -83,24 +100,34 @@ const GameCreate = () => {
         <main className="min-h-screen bg-neutral-950 text-white">
             <section className="mx-auto max-w-5xl px-4 py-12 space-y-6">
                 <h1 className="text-3xl font-semibold text-center sm:text-4xl">
-                    Create Game
+                    Submit Game for Approval
                 </h1>
+
+                <p className="text-center text-sm text-white/60">
+                    Your game will be reviewed by a moderator before being published.
+                </p>
+
+                {error && (
+                    <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+                        {error}
+                    </div>
+                )}
 
                 <Section title="General Information">
                     <input
-                        placeholder="Game name"
+                        placeholder="Game name *"
                         value={form.name}
                         onChange={(e) => update("name", e.target.value)}
                         className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
                     />
                     <input
-                        placeholder="Game type (FPS, MOBA…)"
+                        placeholder="Game type (FPS, MOBA…) *"
                         value={form.type}
                         onChange={(e) => update("type", e.target.value)}
                         className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
                     />
                     <textarea
-                        placeholder="Description"
+                        placeholder="Description *"
                         rows={4}
                         value={form.description}
                         onChange={(e) => update("description", e.target.value)}
@@ -147,7 +174,7 @@ const GameCreate = () => {
                     </div>
                 </Section>
 
-                <Section title="Game Image">
+                <Section title="Game Image *">
                     <ImagePicker
                         label="Choose game image"
                         value={form.gameImage}
@@ -157,10 +184,11 @@ const GameCreate = () => {
 
                 <div className="flex justify-center">
                     <button
-                        onClick={handleCreate}
-                        className="rounded-xl bg-white px-6 py-2.5 text-sm font-semibold text-black hover:bg-white/90"
+                        onClick={handleSubmit}
+                        disabled={loading}
+                        className="rounded-xl bg-white px-6 py-2.5 text-sm font-semibold text-black hover:bg-white/90 disabled:opacity-50"
                     >
-                        Create Game
+                        {loading ? "Submitting…" : "Submit for approval"}
                     </button>
                 </div>
             </section>

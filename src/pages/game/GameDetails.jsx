@@ -12,10 +12,9 @@ function Section({ title, children }) {
 }
 
 const GameDetails = () => {
-    const { id } = useParams();
+    const { gameId } = useParams();
     const navigate = useNavigate();
-    const { token, user, isTokenExpired, logout } =
-        useContext(AuthContext);
+    const { token, user, isTokenExpired } = useContext(AuthContext);
 
     const [game, setGame] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -29,7 +28,7 @@ const GameDetails = () => {
                 }
 
                 const res = await fetch(
-                    `http://localhost:8080/api/games/${id}`,
+                    `http://localhost:8080/api/games/${gameId}`,
                     { headers }
                 );
 
@@ -43,7 +42,7 @@ const GameDetails = () => {
         };
 
         fetchGame();
-    }, [id, token, isTokenExpired]);
+    }, [gameId, token, isTokenExpired]);
 
     if (loading) {
         return (
@@ -63,8 +62,7 @@ const GameDetails = () => {
 
     return (
         <main className="min-h-screen bg-neutral-950 text-white">
-            <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8 space-y-6">
-                {/* Header */}
+            <section className="mx-auto max-w-6xl px-4 py-12 space-y-6">
                 <div className="rounded-2xl border border-white/10 bg-black/55 p-6 shadow-2xl backdrop-blur flex flex-col lg:flex-row gap-6">
                     <div className="h-56 w-full lg:w-96 rounded-xl overflow-hidden bg-white/5 flex items-center justify-center">
                         {game.gameImage ? (
@@ -75,59 +73,31 @@ const GameDetails = () => {
                             />
                         ) : (
                             <span className="text-sm text-white/40">
-                No image
-              </span>
+                                No image
+                            </span>
                         )}
                     </div>
 
                     <div className="flex-1">
-                        <h1 className="text-2xl font-semibold sm:text-3xl">
+                        <h1 className="text-2xl font-semibold">
                             {game.name}
                         </h1>
+
                         <p className="mt-2 text-sm text-white/70">
                             {game.description}
                         </p>
 
                         <div className="mt-4 flex flex-wrap gap-4 text-sm text-white/70">
-              <span>
-                <strong className="text-white">Type:</strong>{" "}
-                  {game.type}
-              </span>
-                            <span>
-                <strong className="text-white">
-                  Max players/team:
-                </strong>{" "}
-                                {game.maxPlayersPerTeam}
-              </span>
-                            <span>
-                <strong className="text-white">Year:</strong>{" "}
-                                {game.yearOfExistence}
-              </span>
-                            <span>
-                <strong className="text-white">
-                  Publisher:
-                </strong>{" "}
-                                {game.publisher}
-              </span>
+                            <span><strong className="text-white">Type:</strong> {game.type}</span>
+                            <span><strong className="text-white">Max players/team:</strong> {game.maxPlayersPerTeam}</span>
+                            <span><strong className="text-white">Year:</strong> {game.yearOfExistence}</span>
+                            <span><strong className="text-white">Publisher:</strong> {game.publisher}</span>
                         </div>
-
-                        {user?.role === "admin" && (
-                            <div className="mt-6">
-                                <Link
-                                    to={`/games/modify/${game.id}`}
-                                    className="inline-flex rounded-xl bg-white px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-white/90"
-                                >
-                                    Edit Game
-                                </Link>
-                            </div>
-                        )}
                     </div>
                 </div>
 
-                {/* Grid */}
                 <div className="grid gap-6 lg:grid-cols-3">
-                    {/* Left */}
-                    <div className="space-y-6">
+                    <div>
                         <Section title="Platforms">
                             {game.platforms?.length ? (
                                 <ul className="flex flex-wrap gap-2">
@@ -148,23 +118,21 @@ const GameDetails = () => {
                         </Section>
                     </div>
 
-                    {/* Right */}
                     <div className="lg:col-span-2 space-y-6">
                         <Section title="Rules">
-                            <p className="text-sm text-white/80 whitespace-pre-line">
+                            <p className="text-sm whitespace-pre-line">
                                 {game.rules || "No rules provided."}
                             </p>
                         </Section>
 
                         <Section title="Tutorial">
-                            <p className="text-sm text-white/80 whitespace-pre-line">
+                            <p className="text-sm whitespace-pre-line">
                                 {game.tutorial || "No tutorial provided."}
                             </p>
                         </Section>
                     </div>
                 </div>
 
-                {/* Back */}
                 <div className="flex justify-center">
                     <button
                         onClick={() => navigate(-1)}
