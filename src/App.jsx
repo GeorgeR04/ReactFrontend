@@ -65,7 +65,15 @@ function App() {
                         <Route path="/teams" element={<Teams />} />
                         <Route path="/teams/explore" element={<TeamExplore />} />
                         <Route path="/teams/:teamId" element={<TeamDetail />} />
-
+                        <Route
+                            path="/user/:username"
+                            element={
+                                <UserPage
+                                    isRoleModalOpen={isRoleModalOpen}
+                                    setIsRoleModalOpen={setIsRoleModalOpen}
+                                />
+                            }
+                        />
                         <Route path="/organizations/explore" element={<OrganizationExplore />} />
 
                         {/* ================= ROLE PROTECTED ================= */}
@@ -92,15 +100,6 @@ function App() {
 
                         <Route element={<ProtectedRoute />}>
                             <Route path="/user/settings" element={<SettingsPage />} />
-                            <Route
-                                path="/user/:username"
-                                element={
-                                    <UserPage
-                                        isRoleModalOpen={isRoleModalOpen}
-                                        setIsRoleModalOpen={setIsRoleModalOpen}
-                                    />
-                                }
-                            />
                         </Route>
 
                         {/* ================= MODERATOR ================= */}

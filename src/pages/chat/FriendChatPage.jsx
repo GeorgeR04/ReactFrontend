@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { AuthContext } from "../../security/AuthContext";
 import AddFriendPanel from "./panel/AddFriendPanel.jsx";
 import ReceivedRequestsPanel from "./panel/ReceivedRequestsPanel.jsx";
@@ -11,8 +12,12 @@ function cx(...classes) {
 
 const FriendChatPage = () => {
     const { user, token } = useContext(AuthContext);
+    const location = useLocation();
 
-    const cleanToken = useMemo(() => token?.trim() || "", [token]);
+    const cleanToken = useMemo(
+        () => (typeof token === "string" ? token.trim().replace(/^Bearer\s+/i, "") : ""),
+        [token]
+    );
 
     const [friends, setFriends] = useState([]);
     const [friendsStatus, setFriendsStatus] = useState("loading"); // loading | ready | error
@@ -32,7 +37,7 @@ const FriendChatPage = () => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const listEndRef = useRef(null);
-
+    const activeConversationIdRef = useRef(null);
     // soft fade-in
     useEffect(() => {
         const t = setTimeout(() => setShowContent(true), 150);
@@ -44,24 +49,29 @@ const FriendChatPage = () => {
         listEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages.length, selectedFriend?.id]);
 
+    useEffect(() => {
+        activeConversationIdRef.current = activeConversationId;
+    }, [activeConversationId]);
+
     // Connect STOMP
     useEffect(() => {
-        if (!token || !user) return;
+        if (!cleanToken || !user) return;
 
         const client = new Client({
             brokerURL: "ws://localhost:8080/ws",
-            connectHeaders: { Authorization: `Bearer ${token}` },
+            connectHeaders: { Authorization: `Bearer ${cleanToken}` },
             reconnectDelay: 5000,
             onConnect: () => {
                 setStompClient(client);
 
-                // One subscription, filter by conversationId
                 client.subscribe("/topic/public", (message) => {
                     try {
                         const msg = JSON.parse(message.body);
+                        const currentConvId = activeConversationIdRef.current;
 
                         if (!msg?.conversationId) return;
-                        if (String(msg.conversationId) !== String(activeConversationId)) return;
+                        if (!currentConvId) return;
+                        if (String(msg.conversationId) !== String(currentConvId)) return;
 
                         setMessages((prev) => [...prev, msg]);
                     } catch (e) {
@@ -80,7 +90,7 @@ const FriendChatPage = () => {
                 client.deactivate();
             } catch {}
         };
-    }, [token, user, activeConversationId]);
+    }, [cleanToken, user]);
 
     // Fetch friends list
     useEffect(() => {
@@ -138,11 +148,32 @@ const FriendChatPage = () => {
 
             setMessages(Array.isArray(msgs) ? msgs : []);
             setMessagesStatus("ready");
+
+            // OPTIONNEL: ici tu peux appeler un endpoint "mark as read" si tu en as un
+            // await fetch(`http://localhost:8080/api/messages/mark-read/${conversationId}`, { method: "POST", headers: { Authorization: `Bearer ${cleanToken}` } });
         } catch (err) {
             setMessagesStatus("error");
             setMessagesError(err?.message || "Error loading messages.");
         }
     };
+
+    // ✅ AUTO-OPEN FRIEND FROM NOTIFICATION: /chat?with=username
+    useEffect(() => {
+        if (friendsStatus !== "ready") return;
+        if (!friends?.length) return;
+
+        const params = new URLSearchParams(location.search);
+        const withUser = params.get("with");
+        if (!withUser) return;
+
+        // si déjà ouvert, ne refait pas
+        if (selectedFriend?.username && selectedFriend.username.toLowerCase() === withUser.toLowerCase()) return;
+
+        const found = friends.find((f) => String(f.username).toLowerCase() === String(withUser).toLowerCase());
+        if (found) {
+            loadMessages(found);
+        }
+    }, [friendsStatus, friends, location.search]); // volontairement sans selectedFriend/loadMessages pour éviter boucles
 
     const sendMessage = () => {
         if (!newMessage.trim() || !selectedFriend || !activeConversationId || !stompClient?.connected) return;
@@ -202,7 +233,7 @@ const FriendChatPage = () => {
                         "fixed inset-y-0 left-0 z-50 w-[320px] border-r border-white/10 bg-black p-4 overflow-y-auto md:static md:z-auto md:h-auto md:w-[340px]",
                         "transition-transform duration-300",
                         isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0",
-                        "pt-16 md:pt-4" // space for mobile top bar
+                        "pt-16 md:pt-4"
                     )}
                     aria-label="Friends sidebar"
                 >
@@ -221,9 +252,7 @@ const FriendChatPage = () => {
                                 <span className="text-xs text-white/60">{friends.length}</span>
                             </div>
 
-                            {friendsStatus === "loading" && (
-                                <p className="mt-3 text-sm text-white/70">Loading friends...</p>
-                            )}
+                            {friendsStatus === "loading" && <p className="mt-3 text-sm text-white/70">Loading friends...</p>}
 
                             {friendsStatus === "error" && (
                                 <p className="mt-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
@@ -253,11 +282,7 @@ const FriendChatPage = () => {
                                                     <div className="flex items-center gap-3">
                                                         <div className="h-10 w-10 overflow-hidden rounded-full border border-white/10 bg-white/10">
                                                             {f.profileImage ? (
-                                                                <img
-                                                                    src={avatarSrc(f.profileImage)}
-                                                                    alt={`${f.username} avatar`}
-                                                                    className="h-full w-full object-cover"
-                                                                />
+                                                                <img src={avatarSrc(f.profileImage)} alt={`${f.username} avatar`} className="h-full w-full object-cover" />
                                                             ) : (
                                                                 <div className="h-full w-full" />
                                                             )}
@@ -313,14 +338,10 @@ const FriendChatPage = () => {
                         {/* Messages */}
                         <div className="h-[calc(100vh-260px)] md:h-[calc(100vh-220px)] overflow-y-auto px-4 py-4">
                             {!selectedFriend && (
-                                <div className="flex h-full items-center justify-center text-sm text-white/60">
-                                    Select a friend to chat with
-                                </div>
+                                <div className="flex h-full items-center justify-center text-sm text-white/60">Select a friend to chat with</div>
                             )}
 
-                            {selectedFriend && messagesStatus === "loading" && (
-                                <div className="text-sm text-white/70">Loading messages...</div>
-                            )}
+                            {selectedFriend && messagesStatus === "loading" && <div className="text-sm text-white/70">Loading messages...</div>}
 
                             {selectedFriend && messagesStatus === "error" && (
                                 <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
@@ -329,9 +350,7 @@ const FriendChatPage = () => {
                             )}
 
                             {selectedFriend && messagesStatus === "ready" && messages.length === 0 && (
-                                <div className="text-center text-sm text-white/60">
-                                    No messages yet. Start the conversation!
-                                </div>
+                                <div className="text-center text-sm text-white/60">No messages yet. Start the conversation!</div>
                             )}
 
                             {selectedFriend && messages.length > 0 && (
@@ -399,9 +418,7 @@ const FriendChatPage = () => {
                                 </button>
                             </div>
 
-                            {!stompClient?.connected && (
-                                <p className="mt-2 text-xs text-white/50">Connecting to chat server…</p>
-                            )}
+                            {!stompClient?.connected && <p className="mt-2 text-xs text-white/50">Connecting to chat server…</p>}
                         </div>
                     </div>
                 </main>
@@ -409,11 +426,7 @@ const FriendChatPage = () => {
 
             {/* Mobile overlay when sidebar open */}
             {isSidebarOpen && (
-                <button
-                    aria-label="Close sidebar"
-                    className="fixed inset-0 z-40 bg-black/60 md:hidden"
-                    onClick={() => setIsSidebarOpen(false)}
-                />
+                <button aria-label="Close sidebar" className="fixed inset-0 z-40 bg-black/60 md:hidden" onClick={() => setIsSidebarOpen(false)} />
             )}
         </div>
     );

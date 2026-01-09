@@ -1,9 +1,9 @@
 import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import { Menu, X ,Bell } from "lucide-react";
-import { User, MessageSquare, Shield, LogOut } from "lucide-react";
+import { Menu, X, Bell, MessageSquare } from "lucide-react";
 import { AuthContext } from "../security/AuthContext.jsx";
 import logoImage from "../assets/Image/Logo1.png";
+import { useMessageNotifications } from "../Components/hooks/useMessageNotifications.jsx";
 
 function cx(...classes) {
     return classes.filter(Boolean).join(" ");
@@ -13,20 +13,30 @@ const Header = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { token, user, logout } = useContext(AuthContext);
+
     const [pendingCount, setPendingCount] = useState(0);
 
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
 
+    const [isMsgOpen, setIsMsgOpen] = useState(false);
+
     const dropdownRef = useRef(null);
-    const isAuthed = Boolean(token && user);
+    const msgDropdownRef = useRef(null);
 
     const pathname = useMemo(() => location.pathname, [location.pathname]);
+
+    const { totalUnread, items: msgItems, markReadFromSender } = useMessageNotifications({
+        token,
+        enabled: Boolean(token && user),
+        pollMs: 8000,
+    });
 
     const handleLogout = () => {
         logout();
         setIsDropdownOpen(false);
         setIsMobileOpen(false);
+        setIsMsgOpen(false);
 
         if (location.pathname.startsWith("/user")) {
             navigate("/login");
@@ -37,19 +47,26 @@ const Header = () => {
     useEffect(() => {
         setIsDropdownOpen(false);
         setIsMobileOpen(false);
+        setIsMsgOpen(false);
     }, [pathname]);
 
-    // close dropdown on outside click + Escape
+    // close dropdowns on outside click + Escape
     useEffect(() => {
-        if (!isDropdownOpen) return;
+        if (!isDropdownOpen && !isMsgOpen) return;
 
         const onPointerDown = (e) => {
-            if (!dropdownRef.current) return;
-            if (!dropdownRef.current.contains(e.target)) setIsDropdownOpen(false);
+            const inProfile = dropdownRef.current?.contains(e.target);
+            const inMsg = msgDropdownRef.current?.contains(e.target);
+
+            if (!inProfile) setIsDropdownOpen(false);
+            if (!inMsg) setIsMsgOpen(false);
         };
 
         const onKeyDown = (e) => {
-            if (e.key === "Escape") setIsDropdownOpen(false);
+            if (e.key === "Escape") {
+                setIsDropdownOpen(false);
+                setIsMsgOpen(false);
+            }
         };
 
         document.addEventListener("pointerdown", onPointerDown);
@@ -58,34 +75,29 @@ const Header = () => {
             document.removeEventListener("pointerdown", onPointerDown);
             document.removeEventListener("keydown", onKeyDown);
         };
-    }, [isDropdownOpen]);
+    }, [isDropdownOpen, isMsgOpen]);
+
+    // MODERATOR pending requests badge
     useEffect(() => {
         if (!token || !user) return;
 
-        const isModerator =
-            user.role === "moderator" || user.role === "organizer_moderator";
-
+        const isModerator = user.role === "moderator" || user.role === "organizer_moderator";
         if (!isModerator) return;
 
         const fetchPending = async () => {
             try {
-                const res = await fetch(
-                    "http://localhost:8080/api/game-requests/count-pending",
-                    {
-                        headers: { Authorization: `Bearer ${token}` },
-                    }
-                );
+                const res = await fetch("http://localhost:8080/api/game-requests/count-pending", {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
                 if (!res.ok) return;
                 const count = await res.json();
                 setPendingCount(Number(count) || 0);
             } catch {
-                // silence (badge non critique)
+                // silence
             }
         };
 
         fetchPending();
-
-        // refresh léger toutes les 30s
         const interval = setInterval(fetchPending, 30000);
         return () => clearInterval(interval);
     }, [token, user]);
@@ -99,7 +111,7 @@ const Header = () => {
         <>
             <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-black text-white backdrop-blur">
                 <div className="w-full p-4 flex justify-between items-center">
-                    {/* Header Logo (unchanged style) */}
+                    {/* Logo */}
                     <div className="flex items-center space-x-4 group transition duration-500 ease-in-out">
                         <Link
                             to="/"
@@ -128,7 +140,7 @@ const Header = () => {
                         </Link>
                     </div>
 
-                    {/* Desktop Navigation Links (same vibe + active state) */}
+                    {/* Desktop nav */}
                     <nav className="hidden md:flex items-center space-x-6 group" aria-label="Primary">
                         <Link
                             to="/tournament"
@@ -173,7 +185,7 @@ const Header = () => {
                         </Link>
                     </nav>
 
-                    {/* Right side: Mobile menu + Profile */}
+                    {/* Right side */}
                     <div className="flex items-center space-x-3">
                         {/* Mobile menu toggle */}
                         <button
@@ -186,12 +198,10 @@ const Header = () => {
                             {isMobileOpen ? <X size={20} /> : <Menu size={20} />}
                         </button>
 
-                        {/* Profile and Dropdown (old style, but click + a11y) */}
-                        {/* Profile and Dropdown */}
-
                         <div className="relative flex items-center space-x-4">
                             {token && user ? (
                                 <>
+                                    {/* MODERATOR notif */}
                                     {(user?.role === "moderator" || user?.role === "organizer_moderator") && (
                                         <button
                                             onClick={() => navigate("/moderator/game-requests")}
@@ -201,63 +211,171 @@ const Header = () => {
                                             <Bell className="h-5 w-5" />
                                             {pendingCount > 0 && (
                                                 <span className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-xs font-bold text-white">
-                                                    {pendingCount}
-                                                </span>
+                          {pendingCount}
+                        </span>
                                             )}
                                         </button>
                                     )}
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsDropdownOpen((v) => !v)}
-                                        className="bg-black text-white font-bold px-4 py-2 rounded-lg transition duration-300 transform hover:scale-105 shadow-sm hover:shadow-md hover:bg-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 inline-flex items-center gap-2"
-                                        aria-haspopup="menu"
-                                        aria-expanded={isDropdownOpen}
-                                    >
-                                        My Profile
-                                    </button>
 
-                                    {isDropdownOpen && (
-                                        <div className="absolute top-[2.9rem] right-0 bg-gray-900/95 text-white rounded-xl shadow-xl z-50 w-52 border border-white/10 backdrop-blur">
-                                            <button
-                                                className="block px-4 py-2 w-full text-left transition duration-200 hover:bg-indigo-600 hover:text-white hover:pl-5"
-                                                onClick={() => {
-                                                    navigate(`/user/${user.username}`);
-                                                    setIsDropdownOpen(false);
-                                                }}
-                                            >
-                                                Go to Profile
-                                            </button>
-
-                                            <button
-                                                onClick={() => {
-                                                    navigate("/user/settings");
-                                                    setIsDropdownOpen(false);
-                                                }}
-                                                className="block px-4 py-2 w-full text-left transition duration-200 hover:bg-indigo-600 hover:text-white hover:pl-5"
-                                            >
-                                                Settings
-                                            </button>
-
-                                            <button
-                                                onClick={() => {
+                                    {/* MESSAGE notif + dropdown */}
+                                    <div className="relative" ref={msgDropdownRef}>
+                                        <button
+                                            onClick={() => {
+                                                if (!totalUnread) {
                                                     navigate("/chat");
-                                                    setIsDropdownOpen(false);
-                                                }}
-                                                className="block px-4 py-2 w-full text-left transition duration-200 hover:bg-purple-600 hover:text-white hover:pl-5"
-                                            >
-                                                Chat
-                                            </button>
-                                            <button
-                                                className="block px-4 py-2 w-full text-left transition duration-200 hover:bg-pink-600 hover:text-white hover:pl-5"
-                                                onClick={() => {
-                                                    handleLogout();
-                                                    setIsDropdownOpen(false);
-                                                }}
-                                            >
-                                                Logout
-                                            </button>
-                                        </div>
-                                    )}
+                                                    return;
+                                                }
+                                                setIsMsgOpen((v) => !v);
+                                                setIsDropdownOpen(false);
+                                            }}
+                                            className="relative rounded-xl p-2 text-white hover:bg-white/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                                            aria-label="Unread messages"
+                                            aria-expanded={isMsgOpen}
+                                        >
+                                            <MessageSquare className="h-5 w-5" />
+                                            {totalUnread > 0 && (
+                                                <span className="absolute -top-1 -right-1 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-red-600 px-1 text-xs font-bold text-white">
+                          {totalUnread}
+                        </span>
+                                            )}
+                                        </button>
+
+                                        {isMsgOpen && (
+                                            <div className="absolute top-[2.9rem] right-0 bg-gray-900/95 text-white rounded-xl shadow-xl z-50 w-80 border border-white/10 backdrop-blur overflow-hidden">
+                                                <div className="px-4 py-3 border-b border-white/10">
+                                                    <p className="text-sm font-semibold">Messages</p>
+                                                    <p className="text-xs text-white/60">
+                                                        {totalUnread > 0 ? `${totalUnread} unread` : "No unread messages"}
+                                                    </p>
+                                                </div>
+
+                                                <div className="max-h-80 overflow-auto">
+                                                    {msgItems?.length ? (
+                                                        msgItems.slice(0, 8).map((m, idx) => {
+                                                            const fromUsername = (m?.fromUsername || "").trim();
+                                                            const fromUserId = (m?.fromUserId || "").trim();
+
+                                                            return (
+                                                                <button
+                                                                    key={`${fromUserId || "noid"}-${idx}`}
+                                                                    className="w-full text-left px-4 py-3 hover:bg-white/5 transition flex items-start justify-between gap-3"
+                                                                    onClick={async () => {
+                                                                        setIsMsgOpen(false);
+
+                                                                        if (fromUserId) {
+                                                                            try {
+                                                                                await fetch(
+                                                                                    `http://localhost:8080/api/messages/mark-read/from/${encodeURIComponent(fromUserId)}`,
+                                                                                    {
+                                                                                        method: "POST",
+                                                                                        headers: { Authorization: `Bearer ${token}` },
+                                                                                    }
+                                                                                );
+                                                                            } catch {
+                                                                                // silence
+                                                                            }
+                                                                        }
+
+                                                                        if (fromUsername) {
+                                                                            navigate(`/chat?with=${encodeURIComponent(fromUsername)}`);
+                                                                        } else {
+                                                                            navigate("/chat");
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <div className="min-w-0">
+                                                                        <p className="text-sm font-semibold truncate">@{fromUsername || "Unknown"}</p>
+                                                                        {m?.preview && <p className="text-xs text-white/70 truncate">{m.preview}</p>}
+                                                                    </div>
+
+                                                                    {Number(m?.count) > 0 && (
+                                                                        <span className="mt-0.5 inline-flex items-center justify-center rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold">
+                                                                            {m.count}
+                                                                        </span>
+                                                                    )}
+                                                                </button>
+                                                            );
+                                                        })
+                                                    ) : (
+                                                        <div className="px-4 py-4 text-sm text-white/70">No unread messages.</div>
+                                                    )}
+
+                                                </div>
+
+                                                <div className="px-4 py-3 border-t border-white/10">
+                                                    <button
+                                                        className="w-full rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-white/90"
+                                                        onClick={() => {
+                                                            setIsMsgOpen(false);
+                                                            navigate("/chat");
+                                                        }}
+                                                    >
+                                                        Open chat
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Profile dropdown */}
+                                    <div className="relative" ref={dropdownRef}>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIsDropdownOpen((v) => !v);
+                                                setIsMsgOpen(false);
+                                            }}
+                                            className="bg-black text-white font-bold px-4 py-2 rounded-lg transition duration-300 transform hover:scale-105 shadow-sm hover:shadow-md hover:bg-indigo-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 inline-flex items-center gap-2"
+                                            aria-haspopup="menu"
+                                            aria-expanded={isDropdownOpen}
+                                        >
+                                            My Profile
+                                        </button>
+
+                                        {isDropdownOpen && (
+                                            <div className="absolute top-[2.9rem] right-0 bg-gray-900/95 text-white rounded-xl shadow-xl z-50 w-52 border border-white/10 backdrop-blur">
+                                                <button
+                                                    className="block px-4 py-2 w-full text-left transition duration-200 hover:bg-indigo-600 hover:text-white hover:pl-5"
+                                                    onClick={() => {
+                                                        navigate(`/user/${user.username}`);
+                                                        setIsDropdownOpen(false);
+                                                    }}
+                                                >
+                                                    Go to Profile
+                                                </button>
+
+                                                <button
+                                                    onClick={() => {
+                                                        navigate("/user/settings");
+                                                        setIsDropdownOpen(false);
+                                                    }}
+                                                    className="block px-4 py-2 w-full text-left transition duration-200 hover:bg-indigo-600 hover:text-white hover:pl-5"
+                                                >
+                                                    Settings
+                                                </button>
+
+                                                <button
+                                                    onClick={() => {
+                                                        navigate("/chat");
+                                                        setIsDropdownOpen(false);
+                                                    }}
+                                                    className="block px-4 py-2 w-full text-left transition duration-200 hover:bg-purple-600 hover:text-white hover:pl-5"
+                                                >
+                                                    Chat
+                                                </button>
+
+                                                <button
+                                                    className="block px-4 py-2 w-full text-left transition duration-200 hover:bg-pink-600 hover:text-white hover:pl-5"
+                                                    onClick={() => {
+                                                        handleLogout();
+                                                        setIsDropdownOpen(false);
+                                                    }}
+                                                >
+                                                    Logout
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                 </>
                             ) : (
                                 <Link
@@ -271,7 +389,7 @@ const Header = () => {
                     </div>
                 </div>
 
-                {/* Mobile Navigation Panel (keeps same vibe) */}
+                {/* Mobile nav panel */}
                 {isMobileOpen && (
                     <div className="md:hidden border-t border-white/10 bg-black/70 backdrop-blur">
                         <div className="px-4 py-3 space-y-2">
