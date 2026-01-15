@@ -11,7 +11,7 @@ import logo2 from "../../../assets/Image/tournamentpage/Procircuitlogo.png";
 import logo3 from "../../../assets/Image/tournamentpage/masterslogo.png";
 import logo4 from "../../../assets/Image/tournamentpage/Affiliated.png";
 
-import CornerBadge from "../../../Components/ui/CornerBadge.jsx";
+import CornerBadge from "../../../components/ui/CornerBadge.jsx";
 
 const sections = [
     {

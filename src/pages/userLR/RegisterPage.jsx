@@ -7,7 +7,7 @@ import backgroundImage4 from "../../assets/Image/regjsterImage/Liquid.jpg";
 import backgroundImage5 from "../../assets/Image/regjsterImage/faze.jpg";
 import { Link } from "react-router-dom";
 
-import CornerBadge from "../../Components/ui/CornerBadge.jsx";
+import CornerBadge from "../../components/ui/CornerBadge.jsx";
 
 function Register() {
     const [firstname, setFirstname] = useState("");

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import backgroundImage from "../assets/Image/pageImage/background.jpg";
 
-import Hero from "../Components/layout/Hero.jsx";
-import CornerBadge from "../Components/ui/CornerBadge.jsx";
-import { useRevealOnIntersect } from "../Components/hooks/useRevealOnIntersect.jsx";
+import Hero from "../components/layout/Hero.jsx";
+import CornerBadge from "../components/ui/CornerBadge.jsx";
+import { useRevealOnIntersect } from "../components/hooks/useRevealOnIntersect.jsx";
 
 function cx(...classes) {
     return classes.filter(Boolean).join(" ");

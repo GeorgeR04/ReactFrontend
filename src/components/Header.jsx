@@ -3,7 +3,7 @@ import { useNavigate, Link, useLocation } from "react-router-dom";
 import { Menu, X, Bell, MessageSquare } from "lucide-react";
 import { AuthContext } from "../security/AuthContext.jsx";
 import logoImage from "../assets/Image/Logo1.png";
-import { useMessageNotifications } from "../Components/hooks/useMessageNotifications.jsx";
+import { useMessageNotifications } from "./hooks/useMessageNotifications.jsx";
 
 function cx(...classes) {
     return classes.filter(Boolean).join(" ");

@@ -4,8 +4,8 @@ import { AuthContext } from "../../security/AuthContext.jsx";
 import backgroundImage from "../../assets/Image/pageImage/loginbacbg.jpg";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 
-import Hero from "../../Components/layout/Hero.jsx";
-import CornerBadge from "../../Components/ui/CornerBadge.jsx";
+import Hero from "../../components/layout/Hero.jsx";
+import CornerBadge from "../../components/ui/CornerBadge.jsx";
 
 function Login() {
     const { login } = useContext(AuthContext);

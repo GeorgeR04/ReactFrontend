@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import CornerBadge from "../../../Components/ui/CornerBadge.jsx";
+import CornerBadge from "../../../components/ui/CornerBadge.jsx";
 
 function cx(...classes) {
     return classes.filter(Boolean).join(" ");
