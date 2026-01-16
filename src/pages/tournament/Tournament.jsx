@@ -1,8 +1,7 @@
 // src/pages/Tournament.jsx
 import React from "react";
 import { Link } from "react-router-dom";
-import Video from "../../assets/Video/BackgroundVideo.mp4";
-
+import Video from "../../assets/video/BackgroundVideo.mp4";
 import Hero from "../../components/layout/Hero.jsx";
 import CornerBadge from "../../components/ui/CornerBadge.jsx";
 import { useRevealOnIntersect } from "../../components/hooks/useRevealOnIntersect.jsx";
