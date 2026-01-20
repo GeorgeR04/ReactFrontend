@@ -1,8 +1,11 @@
-export const API_BASE =
+const ENV_BASE =
     (window.__ENV__ && window.__ENV__.API_BASE_URL) ||
     (import.meta?.env && import.meta.env.VITE_API_BASE_URL) ||
     (typeof process !== "undefined" && process.env && process.env.REACT_APP_API_BASE_URL) ||
     "/api";
+
+export const API_BASE = (import.meta?.env && import.meta.env.PROD) ? "/api" : ENV_BASE;
+
 
 export function apiUrl(path) {
     const base = API_BASE.endsWith("/") ? API_BASE.slice(0, -1) : API_BASE;
