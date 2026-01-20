@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useContext } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { AuthContext } from "../../security/AuthContext.jsx";
-import { apiFetch } from "<chemin>/config/api";
+import { apiFetch } from "../../config/apiBase";
 function cx(...classes) {
     return classes.filter(Boolean).join(" ");
 }
