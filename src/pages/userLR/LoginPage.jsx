@@ -6,6 +6,7 @@ import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 import Hero from "../../components/layout/Hero.jsx";
 import CornerBadge from "../../components/ui/CornerBadge.jsx";
+import {apiFetch} from "../../config/apiBase.jsx";
 
 function Login() {
     const { login } = useContext(AuthContext);
@@ -26,7 +27,7 @@ function Login() {
         setIsSubmitting(true);
 
         try {
-            const response = await fetch("http://localhost:8080/api/auth/login", {
+            const response = await apiFetch("/api/auth/login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, password }),

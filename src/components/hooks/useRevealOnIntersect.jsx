@@ -5,15 +5,11 @@ const DEFAULT_DELAYS = [100, 400, 800];
 export function useRevealOnIntersect(options = {}) {
     const threshold = options.threshold ?? 0.3;
     const fallbackMs = options.fallbackMs ?? 600;
-
-    // ✅ IMPORTANT: delays doit être une référence stable
     const delays = options.delays ?? DEFAULT_DELAYS;
-
     const ref = useRef(null);
     const hasRevealedRef = useRef(false);
     const timersRef = useRef([]);
     const fallbackTimerRef = useRef(null);
-
     const [step, setStep] = useState(0);
 
     useEffect(() => {

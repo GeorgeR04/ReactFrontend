@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { AuthContext } from "../../security/AuthContext.jsx";
+import {apiFetch} from "../../config/apiBase.jsx";
 
 function Section({ title, children }) {
     return (
@@ -27,8 +28,8 @@ const GameDetails = () => {
                     headers.Authorization = `Bearer ${token}`;
                 }
 
-                const res = await fetch(
-                    `http://localhost:8080/api/games/${gameId}`,
+                const res = await apiFetch(
+                    `/games/${gameId}`,
                     { headers }
                 );
 

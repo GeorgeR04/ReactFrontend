@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useContext } from "react";
 import { AuthContext } from "../../security/AuthContext.jsx";
+import {apiFetch} from "../../config/apiBase.jsx";
 
 function Section({ title, children }) {
     return (
@@ -24,7 +25,7 @@ const OrganizationExplore = () => {
     useEffect(() => {
         const fetchOrganizations = async () => {
             try {
-                const res = await fetch("http://localhost:8080/api/organizations", {
+                const res = await apiFetch("/api/organizations", {
                     headers: token ? { Authorization: `Bearer ${token}` } : {},
                 });
                 if (res.ok) {
@@ -56,8 +57,8 @@ const OrganizationExplore = () => {
         setLoadingMembers(true);
 
         try {
-            const res = await fetch(
-                `http://localhost:8080/api/organizations/${org.id}/members`,
+            const res = await apiFetch(
+                `/organizations/${org.id}/members`,
                 {
                     headers: token ? { Authorization: `Bearer ${token}` } : {},
                 }

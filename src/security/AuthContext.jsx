@@ -1,7 +1,7 @@
 import React, { createContext, useState, useEffect, useCallback } from "react";
 import { jwtDecode } from "./jwtDecodeWrapper";
 import { useNavigate, useLocation } from "react-router-dom";
-
+import { apiUrl } from "../config/apiBase";
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
@@ -51,12 +51,9 @@ export const AuthProvider = ({ children }) => {
     const fetchUserProfile = useCallback(
         async (username, token) => {
             try {
-                const res = await fetch(
-                    `http://localhost:8080/api/profile/username/${username}`,
-                    {
-                        headers: { Authorization: `Bearer ${token}` },
-                    }
-                );
+                const res = await fetch(apiUrl(`/profile/username/${username}`), {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
 
                 if (res.status === 401) {
                     logout();

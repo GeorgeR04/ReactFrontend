@@ -4,7 +4,7 @@ import { Menu, X, Bell, MessageSquare } from "lucide-react";
 import { AuthContext } from "../security/AuthContext.jsx";
 import logoImage from "../assets/Image/Logo1.png";
 import { useMessageNotifications } from "./hooks/useMessageNotifications.jsx";
-
+import { apiFetch } from "../config/apiBase.jsx";
 function cx(...classes) {
     return classes.filter(Boolean).join(" ");
 }
@@ -86,7 +86,7 @@ const Header = () => {
 
         const fetchPending = async () => {
             try {
-                const res = await fetch("http://localhost:8080/api/game-requests/count-pending", {
+                const res = await apiFetch("/game-requests/count-pending", {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (!res.ok) return;
@@ -264,8 +264,8 @@ const Header = () => {
 
                                                                         if (fromUserId) {
                                                                             try {
-                                                                                await fetch(
-                                                                                    `http://localhost:8080/api/messages/mark-read/from/${encodeURIComponent(fromUserId)}`,
+                                                                                await apiFetch(
+                                                                                    `/messages/mark-read/from/${encodeURIComponent(fromUserId)}`,
                                                                                     {
                                                                                         method: "POST",
                                                                                         headers: { Authorization: `Bearer ${token}` },

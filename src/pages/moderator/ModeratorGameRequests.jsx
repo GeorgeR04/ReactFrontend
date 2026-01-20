@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useContext } from "react";
 import { AuthContext } from "../../security/AuthContext.jsx";
+import {apiFetch} from "../../config/apiBase.jsx";
 
 const ModeratorGameRequests = () => {
     const { token } = useContext(AuthContext);
@@ -14,7 +15,7 @@ const ModeratorGameRequests = () => {
        LOAD PENDING REQUESTS
        ========================= */
     useEffect(() => {
-        fetch("http://localhost:8080/api/game-requests/pending", {
+        apiFetch("/game-requests/pending", {
             headers: { Authorization: `Bearer ${token}` },
         })
             .then((r) => r.json())
@@ -30,8 +31,8 @@ const ModeratorGameRequests = () => {
 
         setLoading(true);
         try {
-            const res = await fetch(
-                `http://localhost:8080/api/game-requests/${selected.id}/approve`,
+            const res = await apiFetch(
+                `/game-requests/${selected.id}/approve`,
                 {
                     method: "PUT",
                     headers: {
@@ -64,8 +65,8 @@ const ModeratorGameRequests = () => {
 
         setLoading(true);
         try {
-            const res = await fetch(
-                `http://localhost:8080/api/game-requests/${selected.id}/reject`,
+            const res = await apiFetch(
+                `/api/game-requests/${selected.id}/reject`,
                 {
                     method: "PUT",
                     headers: {

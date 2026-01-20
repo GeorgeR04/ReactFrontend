@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import {apiFetch} from "../../../config/apiBase.jsx";
 
 function cx(...classes) {
     return classes.filter(Boolean).join(" ");
@@ -11,8 +12,8 @@ const OrganizationInvitesPanel = ({ user, token }) => {
     useEffect(() => {
         const fetchInvites = async () => {
             try {
-                const res = await fetch(
-                    `http://localhost:8080/api/organizations/invites/pending?leaderId=${user.username}`,
+                const res = await apiFetch(
+                    `/invites/pending?leaderId=${user.username}`,
                     { headers: { Authorization: `Bearer ${cleanToken}` } }
                 );
                 if (res.ok) {
@@ -27,7 +28,7 @@ const OrganizationInvitesPanel = ({ user, token }) => {
     }, [user?.username, cleanToken]);
 
     const handleAccept = async (inviteId) => {
-        const res = await fetch(`http://localhost:8080/api/organizations/invites/${inviteId}/accept`, {
+        const res = await apiFetch(`/organizations/invites/${inviteId}/accept`, {
             method: "POST",
             headers: { Authorization: `Bearer ${cleanToken}` },
         });
@@ -35,7 +36,7 @@ const OrganizationInvitesPanel = ({ user, token }) => {
     };
 
     const handleReject = async (inviteId) => {
-        const res = await fetch(`http://localhost:8080/api/organizations/invites/${inviteId}/reject`, {
+        const res = await apiFetch(`/organizations/invites/${inviteId}/reject`, {
             method: "POST",
             headers: { Authorization: `Bearer ${cleanToken}` },
         });

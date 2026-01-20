@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import {apiFetch} from "../../config/apiBase.jsx";
 
 const PlayoffBracket = ({ tournamentId }) => {
     const [rounds, setRounds] = useState([]);
@@ -7,7 +8,7 @@ const PlayoffBracket = ({ tournamentId }) => {
     useEffect(() => {
         const fetchRounds = async () => {
             try {
-                const response = await fetch(`http://localhost:8080/api/playoffs/${tournamentId}/structure`);
+                const response = await apiFetch(`/playoffs/${tournamentId}/structure`);
                 if (response.ok) {
                     const data = await response.json();
                     setRounds(data);

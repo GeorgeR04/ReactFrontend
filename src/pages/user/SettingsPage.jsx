@@ -1,12 +1,12 @@
 import { useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../security/AuthContext.jsx";
-
 import SettingsLayout from "../../components/layout/SettingsLayout.jsx";
 import MediaSection from "./settings/MediaSection.jsx";
 import AccountSection from "./settings/AccountSection.jsx";
 import RoleSection from "./settings/RoleSection.jsx";
 import SecuritySection from "./settings/SecuritySection.jsx";
+import {apiFetch} from "../../config/apiBase.jsx";
 
 export default function SettingsPage() {
     const { token } = useContext(AuthContext);
@@ -17,7 +17,7 @@ export default function SettingsPage() {
     useEffect(() => {
         if (!token) return;
 
-        fetch("http://localhost:8080/api/profile/me", {
+        apiFetch("/api/profile/me", {
             headers: {
                 Authorization: `Bearer ${token}`,
             },

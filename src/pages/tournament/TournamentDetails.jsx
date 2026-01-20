@@ -2,6 +2,7 @@ import React, { useEffect, useState, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../security/AuthContext.jsx";
 import PlayoffBracket from "./PlayoffBracket.jsx";
+import {apiFetch} from "../../config/apiBase.jsx";
 
 function Section({ title, children }) {
     return (
@@ -31,8 +32,8 @@ const TournamentDetails = () => {
 
         const fetchAll = async () => {
             try {
-                const tRes = await fetch(
-                    `http://localhost:8080/api/tournaments/${id}`,
+                const tRes = await apiFetch(
+                    `/api/tournaments/${id}`,
                     { headers }
                 );
                 if (!tRes.ok) throw new Error();
@@ -40,9 +41,9 @@ const TournamentDetails = () => {
                 setTournament(tData);
 
                 const [lm, com, mat] = await Promise.all([
-                    fetch(`http://localhost:8080/api/tournaments/${id}/lastMatch`, { headers }),
-                    fetch(`http://localhost:8080/api/tournaments/${id}/commentary`, { headers }),
-                    fetch(`http://localhost:8080/api/tournaments/${id}/matches`, { headers }),
+                    apiFetch(`/tournaments/${id}/lastMatch`, { headers }),
+                    apiFetch(`/api/tournaments/${id}/commentary`, { headers }),
+                    apiFetch(`/api/tournaments/${id}/matches`, { headers }),
                 ]);
 
                 if (lm.ok) setLastMatch(await lm.json());

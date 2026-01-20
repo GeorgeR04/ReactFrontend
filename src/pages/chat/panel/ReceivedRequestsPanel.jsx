@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { AuthContext } from "../../../security/AuthContext.jsx";
 import { CheckCircle, XCircle } from "lucide-react";
+import {apiFetch} from "../../../config/apiBase.jsx";
 
 function cx(...classes) {
     return classes.filter(Boolean).join(" ");
@@ -14,7 +15,7 @@ const ReceivedRequestsPanel = () => {
 
     const fetchRequests = async () => {
         try {
-            const res = await fetch(`http://localhost:8080/api/friends/received?username=${user.username}`, {
+            const res = await apiFetch(`/friends/received?username=${user.username}`, {
                 headers: { Authorization: `Bearer ${cleanToken}` },
             });
             const data = await res.json();
@@ -26,7 +27,7 @@ const ReceivedRequestsPanel = () => {
 
     const respondToRequest = async (id, accept) => {
         try {
-            await fetch(`http://localhost:8080/api/friends/respond?requestId=${id}&accept=${accept}`, {
+            await apiFetch(`/friends/respond?requestId=${id}&accept=${accept}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

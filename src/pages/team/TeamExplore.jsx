@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../security/AuthContext.jsx";
+import {apiFetch} from "../../config/apiBase.jsx";
 
 const TeamExplore = () => {
     const { token, user } = useContext(AuthContext);
@@ -14,7 +15,7 @@ const TeamExplore = () => {
     useEffect(() => {
         const fetchTeams = async () => {
             try {
-                const res = await fetch("http://localhost:8080/api/teams");
+                const res = await apiFetch("/api/teams");
                 if (res.ok) {
                     const data = await res.json();
                     setTeams(data);

@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { AuthContext } from "../../../security/AuthContext.jsx";
 import { UserPlus, Search } from "lucide-react";
+import {apiFetch} from "../../../config/apiBase.jsx";
 
 function cx(...classes) {
     return classes.filter(Boolean).join(" ");
@@ -21,7 +22,7 @@ const AddFriendPanel = () => {
         if (q.length < 3) return setResults([]);
 
         try {
-            const res = await fetch(`http://localhost:8080/api/friends/search?username=${q}`, {
+            const res = await apiFetch(`/friends/search?username=${q}`, {
                 headers: { Authorization: `Bearer ${cleanToken}` },
             });
             if (!res.ok) {
@@ -38,7 +39,7 @@ const AddFriendPanel = () => {
 
     const fetchPendingRequests = async () => {
         try {
-            const res = await fetch(`http://localhost:8080/api/friends/pending?username=${user.username}`, {
+            const res = await apiFetch(`/friends/pending?username=${user.username}`, {
                 headers: { Authorization: `Bearer ${cleanToken}` },
             });
             const data = await res.json();
@@ -57,8 +58,8 @@ const AddFriendPanel = () => {
         }
 
         try {
-            await fetch(
-                `http://localhost:8080/api/friends/request?senderId=${user.username}&receiverId=${receiverUsername}`,
+            await apiFetch(
+                `/friends/request?senderId=${user.username}&receiverId=${receiverUsername}`,
                 {
                     method: "POST",
                     headers: {

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import {apiFetch} from "../../config/apiBase.jsx";
 
 function Card({ children }) {
     return (
@@ -16,8 +17,8 @@ const PopularGames = () => {
     useEffect(() => {
         const fetchPopularGames = async () => {
             try {
-                const res = await fetch(
-                    "http://localhost:8080/api/games/popular"
+                const res = await apiFetch(
+                    "/games/popular"
                 );
                 if (res.ok) {
                     setGames(await res.json());

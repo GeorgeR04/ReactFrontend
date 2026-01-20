@@ -8,6 +8,7 @@ import backgroundImage5 from "../../assets/Image/regjsterImage/faze.jpg";
 import { Link } from "react-router-dom";
 
 import CornerBadge from "../../components/ui/CornerBadge.jsx";
+import {apiFetch} from "../../config/apiBase.jsx";
 
 function Register() {
     const [firstname, setFirstname] = useState("");
@@ -61,7 +62,7 @@ function Register() {
         const user = { firstname, lastname, username, email, password };
 
         try {
-            const response = await fetch("http://localhost:8080/api/auth/register", {
+            const response = await apiFetch("/api/auth/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(user),

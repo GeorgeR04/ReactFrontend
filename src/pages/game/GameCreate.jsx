@@ -2,6 +2,7 @@ import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../security/AuthContext.jsx";
 import ImagePicker from "../../components/ui/ImagePicker.jsx";
+import {apiFetch} from "../../config/apiBase.jsx";
 
 function Section({ title, children }) {
     return (
@@ -73,7 +74,7 @@ const GameCreate = () => {
         setLoading(true);
 
         try {
-            const res = await fetch("http://localhost:8080/api/game-requests", {
+            const res = await apiFetch("/game-requests", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

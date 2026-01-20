@@ -5,6 +5,7 @@ import AddFriendPanel from "./panel/AddFriendPanel.jsx";
 import ReceivedRequestsPanel from "./panel/ReceivedRequestsPanel.jsx";
 import OrganizationInvitesPanel from "./panel/OrganizationInvitesPanel.jsx";
 import { Client } from "@stomp/stompjs";
+import {apiFetch, wsUrl} from "../../config/apiBase.jsx";
 
 function cx(...classes) {
     return classes.filter(Boolean).join(" ");
@@ -58,7 +59,7 @@ const FriendChatPage = () => {
         if (!cleanToken || !user) return;
 
         const client = new Client({
-            brokerURL: "ws://localhost:8080/ws",
+            brokerURL: wsUrl("/ws"),
             connectHeaders: { Authorization: `Bearer ${cleanToken}` },
             reconnectDelay: 5000,
             onConnect: () => {
@@ -101,7 +102,7 @@ const FriendChatPage = () => {
             setFriendsError("");
 
             try {
-                const res = await fetch(`http://localhost:8080/api/friends/${user.username}`, {
+                const res = await apiFetch(`/friends/${user.username}`, {
                     headers: { Authorization: `Bearer ${cleanToken}` },
                 });
 
@@ -130,7 +131,7 @@ const FriendChatPage = () => {
 
         try {
             // 1) conversation id
-            const res = await fetch(`http://localhost:8080/api/chat/private/conversation-with/${friend.id}`, {
+            const res = await apiFetch(`/private/conversation-with/${friend.id}`, {
                 headers: { Authorization: `Bearer ${cleanToken}` },
             });
 
@@ -139,7 +140,7 @@ const FriendChatPage = () => {
             setActiveConversationId(conversationId);
 
             // 2) messages
-            const msgRes = await fetch(`http://localhost:8080/api/chat/conversation/${friend.id}`, {
+            const msgRes = await apiFetch(`/chat/conversation/${friend.id}`, {
                 headers: { Authorization: `Bearer ${cleanToken}` },
             });
 
@@ -149,15 +150,13 @@ const FriendChatPage = () => {
             setMessages(Array.isArray(msgs) ? msgs : []);
             setMessagesStatus("ready");
 
-            // OPTIONNEL: ici tu peux appeler un endpoint "mark as read" si tu en as un
-            // await fetch(`http://localhost:8080/api/messages/mark-read/${conversationId}`, { method: "POST", headers: { Authorization: `Bearer ${cleanToken}` } });
+
         } catch (err) {
             setMessagesStatus("error");
             setMessagesError(err?.message || "Error loading messages.");
         }
     };
 
-    // ✅ AUTO-OPEN FRIEND FROM NOTIFICATION: /chat?with=username
     useEffect(() => {
         if (friendsStatus !== "ready") return;
         if (!friends?.length) return;

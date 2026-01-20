@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useContext } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { AuthContext } from "../../security/AuthContext.jsx";
-
+import { apiFetch } from "<chemin>/config/api";
 function cx(...classes) {
     return classes.filter(Boolean).join(" ");
 }
@@ -116,10 +116,10 @@ export default function UserPage() {
             try {
                 const endpoint =
                     username === "settings"
-                        ? "http://localhost:8080/api/profile/me"
-                        : `http://localhost:8080/api/profile/username/${username}`;
+                        ? "/profile/me"
+                        : `/profile/username/${username}`;
 
-                const response = await fetch(endpoint, {
+                const response = await apiFetch(endpoint, {
                     headers: { Authorization: `Bearer ${cleanToken}` },
                 });
 

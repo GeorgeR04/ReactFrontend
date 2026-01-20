@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useContext } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../security/AuthContext.jsx";
+import {apiFetch} from "../../config/apiBase.jsx";
 
 function cx(...c) {
     return c.filter(Boolean).join(" ");
@@ -23,7 +24,7 @@ const TournamentExplore = () => {
     const fetchTournaments = async () => {
         try {
             setLoading(true);
-            const res = await fetch("http://localhost:8080/api/tournaments/list");
+            const res = await apiFetch("/api/tournaments/list");
             if (res.ok) {
                 const data = await res.json();
                 setTournaments(data);

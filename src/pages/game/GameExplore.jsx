@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../security/AuthContext.jsx";
 import { Search, Plus, Lightbulb, Pencil, Trash2, BookOpen, X } from "lucide-react";
+import {apiFetch} from "../../config/apiBase.jsx";
 
 function cx(...classes) {
     return classes.filter(Boolean).join(" ");
@@ -34,7 +35,7 @@ const GameExplore = () => {
             setError("");
 
             try {
-                const response = await fetch("http://localhost:8080/api/games/list");
+                const response = await apiFetch("/games/list");
                 if (!response.ok) throw new Error("Failed to fetch games.");
 
                 const data = await response.json();
@@ -116,8 +117,8 @@ const GameExplore = () => {
         if (!gameToDelete) return;
 
         try {
-            const response = await fetch(
-                `http://localhost:8080/api/games/${gameToDelete.id}/delete`,
+            const response = await apiFetch(
+                `/games/${gameToDelete.id}/delete`,
                 {
                     method: "DELETE",
                     headers: { Authorization: `Bearer ${cleanToken}` },

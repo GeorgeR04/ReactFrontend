@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { apiFetch } from "../../config/apiBase.jsx";
 
 export function useMessageNotifications({ token, enabled = true, pollMs = 8000 }) {
     const [totalUnread, setTotalUnread] = useState(0);
@@ -21,7 +22,7 @@ export function useMessageNotifications({ token, enabled = true, pollMs = 8000 }
             const ac = new AbortController();
             abortRef.current = ac;
 
-            const res = await fetch("http://localhost:8080/api/messages/unread/summary", {
+            const res = await apiFetch("/messages/unread/summary", {
                 headers: { Authorization: `Bearer ${cleanToken}` },
                 signal: ac.signal,
             });
@@ -46,8 +47,8 @@ export function useMessageNotifications({ token, enabled = true, pollMs = 8000 }
             if (!enabled || !cleanToken || !senderId) return;
 
             try {
-                const res = await fetch(
-                    `http://localhost:8080/api/messages/mark-read/from/${encodeURIComponent(senderId)}`,
+                const res = await apiFetch(
+                    `/messages/mark-read/from/${encodeURIComponent(senderId)}`,
                     {
                         method: "POST",
                         headers: { Authorization: `Bearer ${cleanToken}` },

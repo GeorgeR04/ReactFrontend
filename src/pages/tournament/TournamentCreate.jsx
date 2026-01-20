@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../security/AuthContext.jsx";
 import ImagePicker from "../../components/ui/ImagePicker.jsx";
+import {apiFetch} from "../../config/apiBase.jsx";
 function Section({ title, children }) {
     return (
         <div className="rounded-2xl border border-white/10 bg-black/55 p-6 shadow-2xl backdrop-blur">
@@ -41,7 +42,7 @@ const TournamentCreate = () => {
 
         const fetchGames = async () => {
             try {
-                const res = await fetch("http://localhost:8080/api/games/list", {
+                const res = await apiFetch("/api/games/list", {
                     headers: { Authorization: `Bearer ${token}` },
                 });
                 if (res.ok) setGames(await res.json());
@@ -97,8 +98,8 @@ const TournamentCreate = () => {
         };
 
         try {
-            const res = await fetch(
-                "http://localhost:8080/api/tournaments/create",
+            const res = await apiFetch(
+                "/tournaments/create",
                 {
                     method: "POST",
                     headers: {

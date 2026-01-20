@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '../../../security/AuthContext.jsx';
 import { CheckCircle, XCircle } from 'lucide-react';
+import {apiFetch} from "../../../config/apiBase.jsx";
 
 const PendingFriendRequestsPanel = () => {
     const { user, token } = useContext(AuthContext);
@@ -9,7 +10,7 @@ const PendingFriendRequestsPanel = () => {
 
     const fetchRequests = async () => {
         try {
-            const res = await fetch(`http://localhost:8080/api/friends/received?username=${user.username}`, {
+            const res = await apiFetch(`/friends/received?username=${user.username}`, {
                 headers: { Authorization: `Bearer ${getCleanToken()}` }
             });
             const data = await res.json();
@@ -21,7 +22,7 @@ const PendingFriendRequestsPanel = () => {
 
     const respond = async (id, accept) => {
         try {
-            await fetch(`http://localhost:8080/api/friends/respond?requestId=${id}&accept=${accept}`, {
+            await apiFetch(`/friends/respond?requestId=${id}&accept=${accept}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

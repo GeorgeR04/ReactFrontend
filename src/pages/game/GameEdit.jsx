@@ -2,6 +2,7 @@ import React, { useEffect, useState, useContext } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../security/AuthContext.jsx";
 import ImagePicker from "../../components/ui/ImagePicker.jsx";
+import {apiFetch} from "../../config/apiBase.jsx";
 
 function Section({ title, children }) {
     return (
@@ -30,8 +31,8 @@ const GameEdit = () => {
 
         const fetchGame = async () => {
             try {
-                const res = await fetch(
-                    `http://localhost:8080/api/games/${id}`,
+                const res = await apiFetch(
+                    `/games/${id}`,
                     {
                         headers: { Authorization: `Bearer ${token}` },
                     }
@@ -93,8 +94,8 @@ const GameEdit = () => {
         };
 
         try {
-            const res = await fetch(
-                `http://localhost:8080/api/games/${id}`,
+            const res = await apiFetch(
+                `/games/${id}`,
                 {
                     method: "PUT",
                     headers: {

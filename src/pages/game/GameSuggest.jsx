@@ -1,6 +1,7 @@
 import React, { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../security/AuthContext.jsx";
+import {apiFetch} from "../../config/apiBase.jsx";
 
 function Section({ title, children }) {
     return (
@@ -37,8 +38,8 @@ const GameSuggest = () => {
         setStatus("sending");
 
         try {
-            const res = await fetch(
-                "http://localhost:8080/api/games/suggest",
+            const res = await apiFetch(
+                "/games/suggest",
                 {
                     method: "POST",
                     headers: {

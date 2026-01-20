@@ -1,5 +1,6 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { AuthContext } from "../security/AuthContext.jsx";
+import {apiFetch} from "../config/apiBase.jsx";
 
 export default function RoleSelectionModal({ isOpen, onClose, onSave }) {
     const { token } = useContext(AuthContext);
@@ -30,10 +31,10 @@ export default function RoleSelectionModal({ isOpen, onClose, onSave }) {
         const fetchData = async () => {
             try {
                 const [specRes, gameRes] = await Promise.all([
-                    fetch("http://localhost:8080/api/specializations", {
+                    apiFetch("/api/specializations", {
                         headers: { Authorization: `Bearer ${token}` },
                     }),
-                    fetch("http://localhost:8080/api/games/list"),
+                    apiFetch("/api/games/list"),
                 ]);
 
                 setSpecializations(specRes.ok ? await specRes.json() : []);
