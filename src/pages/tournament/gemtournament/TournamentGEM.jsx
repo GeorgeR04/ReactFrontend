@@ -1,15 +1,15 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import bg1 from "../../../assets/Image/tournamentpage/bg1.png";
-import bg2 from "../../../assets/Image/tournamentpage/bg4.png";
-import bg3 from "../../../assets/Image/tournamentpage/bg2.png";
-import bg4 from "../../../assets/Image/tournamentpage/bg3.png";
+import bg1 from "../../../assets/Image/third_party/tournamentpage/bg1.png";
+import bg2 from "../../../assets/Image/third_party/tournamentpage/bg4.png";
+import bg3 from "../../../assets/Image/third_party/tournamentpage/bg2.png";
+import bg4 from "../../../assets/Image/third_party/tournamentpage/bg3.png";
 
-import logo1 from "../../../assets/Image/tournamentpage/MainLogo.png";
-import logo2 from "../../../assets/Image/tournamentpage/Procircuitlogo.png";
-import logo3 from "../../../assets/Image/tournamentpage/masterslogo.png";
-import logo4 from "../../../assets/Image/tournamentpage/Affiliated.png";
+import logo1 from "../../../assets/Image/placeholder/MainLogo.png";
+import logo2 from "../../../assets/Image/placeholder/Procircuitlogo.png";
+import logo3 from "../../../assets/Image/placeholder/masterslogo.png";
+import logo4 from "../../../assets/Image/placeholder/Affiliated.png";
 
 import CornerBadge from "../../../components/ui/CornerBadge.jsx";
 

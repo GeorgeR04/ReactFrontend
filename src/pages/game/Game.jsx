@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
-import BackgroundImage from "../../assets/Image/gamebackground.jpg";
+import BackgroundImage from "../../assets/Image/third_party/gamebackground.jpg";
 import Hero from "../../components/layout/Hero.jsx";
 import CornerBadge from "../../components/ui/CornerBadge.jsx";
 import { useRevealOnIntersect } from "../../components/hooks/useRevealOnIntersect.jsx";

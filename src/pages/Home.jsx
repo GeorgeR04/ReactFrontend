@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import backgroundImage from "../assets/Image/pageImage/background.jpg";
+import backgroundImage from "../assets/Image/third_party/pageImage/background.jpg";
 
 import Hero from "../components/layout/Hero.jsx";
 import CornerBadge from "../components/ui/CornerBadge.jsx";

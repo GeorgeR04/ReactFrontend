@@ -1,5 +1,5 @@
 import GemInfoPage from "./GemInfoPage.jsx";
-import logoMajor from "../../../assets/Image/tournamentpage/MainLogo.png";
+import logoMajor from "../../../assets/Image/placeholder/MainLogo.png";
 
 export default function GemMajorPage() {
     return (

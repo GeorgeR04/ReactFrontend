@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { Menu, X, Bell, MessageSquare } from "lucide-react";
 import { AuthContext } from "../security/AuthContext.jsx";
-import logoImage from "../assets/Image/Logo1.png";
+import logoImage from "../assets/Image/placeholder/Logo1.png";
 import { useMessageNotifications } from "./hooks/useMessageNotifications.jsx";
 import { apiFetch } from "../config/apiBase.jsx";
 function cx(...classes) {

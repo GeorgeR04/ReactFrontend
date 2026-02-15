@@ -1,5 +1,5 @@
 import GemInfoPage from "./GemInfoPage.jsx";
-import logoPro from "../../../assets/Image/tournamentpage/Procircuitlogo.png";
+import logoPro from "../../../assets/Image/placeholder/Procircuitlogo.png";
 
 export default function GemProPage() {
     return (

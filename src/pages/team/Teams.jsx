@@ -1,7 +1,7 @@
 // src/pages/Team.jsx
 import React from "react";
 import { Link } from "react-router-dom";
-import BackgroundImage from "../../assets/Image/teamsimage.jpg";
+import BackgroundImage from "../../assets/Image/third_party/teamsimage.jpg";
 
 import Hero from "../../components/layout/Hero.jsx";
 import CornerBadge from "../../components/ui/CornerBadge.jsx";

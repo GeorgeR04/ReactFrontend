@@ -1,5 +1,5 @@
 import GemInfoPage from "./GemInfoPage.jsx";
-import logoMasters from "../../../assets/Image/tournamentpage/masterslogo.png";
+import logoMasters from "../../../assets/Image/placeholder/masterslogo.png";
 
 export default function GemMastersPage() {
     return (

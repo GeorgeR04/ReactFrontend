@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useContext } from "react";
 import { Link } from "react-router-dom";
 import { AuthContext } from "../../security/AuthContext.jsx";
-import backgroundImage from "../../assets/Image/pageImage/loginbacbg.jpg";
+import backgroundImage from "../../assets/Image/third_party/pageImage/loginbacbg.jpg";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 
 import Hero from "../../components/layout/Hero.jsx";
