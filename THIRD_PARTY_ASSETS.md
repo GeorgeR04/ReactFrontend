@@ -1,8 +1,8 @@
 # Third-Party Assets
 
-This repository may reference third-party brands and assets (e.g., ESL, FACEIT, etc.).
+This repository may reference third-party brands (e.g., HLTV, ESL, teams, partner tournaments).
 
-Third-party logos, screenshots, and marketing visuals are NOT covered by this project's license.
-They remain the property of their respective owners.
+Third-party logos/photos/marketing visuals are NOT included in this repository and are excluded via .gitignore.
+They remain the property of their respective owners and are not covered by this project's LICENSE.
 
-If any third-party asset was unintentionally included, please open an issue and it will be removed.
+The project includes placeholders so it can run without any third-party assets.
