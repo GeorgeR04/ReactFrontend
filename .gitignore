@@ -23,3 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 *.mp4
+
+# Third-party images (HLTV / ESL / teams / partner tournaments) - NOT redistributed
+assets/image/third_party/
