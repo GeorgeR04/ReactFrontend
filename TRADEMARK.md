@@ -1,6 +1,6 @@
 # Trademark Notice
 
-"GEM Gaming Esport Major" (and related names such as "Gaming Esport Pro Circuit" / "Gaming Esport Master")
+"GEM Gaming Esport Major" (and related names such as "GEM" "Gaming Esport Pro Circuit" / "Gaming Esport Master" "Gaming Esport Affiliated")
 are brand identifiers used by George Rotaru.
 
 The source code is licensed under the LICENSE file, but this does not grant rights to use the project name,
