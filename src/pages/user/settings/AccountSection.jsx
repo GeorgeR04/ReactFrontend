@@ -1,8 +1,13 @@
-import { useContext, useState } from "react";
-import { AuthContext } from "../../../security/AuthContext.jsx";
+import { useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { apiFetch } from "../../../config/apiBase.jsx";
+import { patchUser } from "../../../store/slices/authSlice";
+import { fetchMyProfile } from "../../../store/slices/profilesSlice";
+
 
 export default function AccountSection() {
-    const { token, logout } = useContext(AuthContext);
+    const dispatch = useDispatch();
+    const token = useSelector((s) => s.auth.token);
 
     const [open, setOpen] = useState(false);
     const [username, setUsername] = useState("");
@@ -26,14 +31,17 @@ export default function AccountSection() {
         setLoading(true);
 
         try {
-            const res = await fetch("http://localhost:8080/api/users/me", {
+            const res = await apiFetch("/api/users/me", {
                 method: "PUT",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ username, email }),
+                headers: { Authorization: `Bearer ${token}` },
+                body: { username, email },
             });
+
+            if (!res.ok) throw new Error((await res.text()) || "Update failed");
+
+            dispatch(patchUser({ username, email }));
+            dispatch(fetchMyProfile({ token: String(token).trim() }));
+            setOpen(false);
 
             if (!res.ok) {
                 const msg = await res.text();

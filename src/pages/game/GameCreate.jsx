@@ -1,8 +1,9 @@
-import React, { useState, useContext } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AuthContext } from "../../security/AuthContext.jsx";
+import { useDispatch, useSelector } from "react-redux";
+import { logoutThunk } from "../../store/slices/authSlice.js";
 import ImagePicker from "../../components/ui/ImagePicker.jsx";
-import {apiFetch} from "../../config/apiBase.jsx";
+import { apiFetch } from "../../config/apiBase.jsx";
 
 function Section({ title, children }) {
     return (
@@ -14,8 +15,14 @@ function Section({ title, children }) {
 }
 
 const GameCreate = () => {
-    const { token } = useContext(AuthContext);
+    const dispatch = useDispatch();
     const navigate = useNavigate();
+
+    const token = useSelector((s) => s.auth.token);
+    const cleanToken = useMemo(
+        () => (typeof token === "string" ? token.trim().replace(/^Bearer\s+/i, "") : ""),
+        [token]
+    );
 
     const [form, setForm] = useState({
         name: "",
@@ -38,16 +45,18 @@ const GameCreate = () => {
     const togglePlatform = (p) =>
         update(
             "platforms",
-            form.platforms.includes(p)
-                ? form.platforms.filter((x) => x !== p)
-                : [...form.platforms, p]
+            form.platforms.includes(p) ? form.platforms.filter((x) => x !== p) : [...form.platforms, p]
         );
 
-    /* =========================
-       SUBMIT GAME REQUEST
-       ========================= */
+    const on401 = () => {
+        dispatch(logoutThunk());
+        navigate("/login", { replace: true });
+    };
+
     const handleSubmit = async () => {
         setError("");
+
+        if (!cleanToken) return on401();
 
         if (!form.name || !form.type || !form.description || !form.gameImage) {
             setError("Please fill all required fields.");
@@ -60,12 +69,8 @@ const GameCreate = () => {
             description: form.description,
             rules: form.rules,
             tutorial: form.tutorial,
-            maxPlayersPerTeam: form.maxPlayers
-                ? parseInt(form.maxPlayers, 10)
-                : null,
-            yearOfExistence: form.yearOfExistence
-                ? parseInt(form.yearOfExistence, 10)
-                : null,
+            maxPlayersPerTeam: form.maxPlayers ? parseInt(form.maxPlayers, 10) : null,
+            yearOfExistence: form.yearOfExistence ? parseInt(form.yearOfExistence, 10) : null,
             publisher: form.publisher,
             platforms: form.platforms,
             gameImage: form.gameImage,
@@ -76,19 +81,17 @@ const GameCreate = () => {
         try {
             const res = await apiFetch("/game-requests", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
+                headers: { Authorization: `Bearer ${cleanToken}` },
+                body: payload,
             });
+
+            if (res.status === 401) return on401();
 
             if (!res.ok) {
                 const msg = await res.text();
                 throw new Error(msg || "Failed to submit game request.");
             }
 
-            // succès → retour à l'explore
             navigate("/games/explore");
         } catch (e) {
             setError(e.message || "Submission failed.");

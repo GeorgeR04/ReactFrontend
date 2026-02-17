@@ -1,9 +1,11 @@
-import { useContext, useEffect, useRef, useState } from "react";
-import { AuthContext } from "../security/AuthContext.jsx";
-import {apiFetch} from "../config/apiBase.jsx";
+import { useEffect, useRef, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { apiFetch } from "../config/apiBase.jsx";
+import { patchUser } from "../store/slices/authSlice";
 
 export default function RoleSelectionModal({ isOpen, onClose, onSave }) {
-    const { token } = useContext(AuthContext);
+    const dispatch = useDispatch();
+    const token = useSelector((s) => s.auth.token);
 
     const [role, setRole] = useState("");
     const [specialization, setSpecialization] = useState("");
@@ -32,7 +34,7 @@ export default function RoleSelectionModal({ isOpen, onClose, onSave }) {
             try {
                 const [specRes, gameRes] = await Promise.all([
                     apiFetch("/api/specializations", {
-                        headers: { Authorization: `Bearer ${token}` },
+                        headers: token ? { Authorization: `Bearer ${token}` } : {},
                     }),
                     apiFetch("/api/games/list"),
                 ]);
@@ -82,34 +84,25 @@ export default function RoleSelectionModal({ isOpen, onClose, onSave }) {
             }
         }
 
+        if (!token) {
+            setError("You must be logged in.");
+            return;
+        }
+
         setLoading(true);
 
         try {
-            const res = await fetch(
-                "http://localhost:8080/api/profile/set-player-details",
-                {
-                    method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        role,
-                        specialization: role === "player" ? specialization : null,
-                        game: role === "player" ? game : null,
-                    }),
-                }
-            );
+            const res = await apiFetch("/api/profile/set-player-details", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${token}` },
+                body: { role, specialization, game },
+            });
 
-            if (!res.ok) {
-                const msg = await res.text();
-                throw new Error(msg || "Failed to save role.");
-            }
-
+            dispatch(patchUser({ role, specialization, game }));
             onSave?.();
             onClose();
         } catch (e) {
-            setError(e.message);
+            setError(e?.message || "Failed to save role.");
         } finally {
             setLoading(false);
         }
@@ -130,18 +123,14 @@ export default function RoleSelectionModal({ isOpen, onClose, onSave }) {
                 className="w-full max-w-lg rounded-2xl border border-white/10 bg-black/80 p-6 text-white shadow-2xl backdrop-blur outline-none"
             >
                 <h2 className="text-xl font-semibold">Choose your role</h2>
-                <p className="mt-1 text-sm text-white/70">
-                    This helps us personalize your experience.
-                </p>
+                <p className="mt-1 text-sm text-white/70">This helps us personalize your experience.</p>
 
-                {/* ERROR */}
                 {error && (
                     <p className="mt-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-200">
                         {error}
                     </p>
                 )}
 
-                {/* ROLE SELECTION */}
                 <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <button
                         onClick={() => setRole("player")}
@@ -172,13 +161,10 @@ export default function RoleSelectionModal({ isOpen, onClose, onSave }) {
                     </button>
                 </div>
 
-                {/* PLAYER DETAILS */}
                 {role === "player" && (
                     <div className="mt-6 space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-white/80">
-                                Specialization
-                            </label>
+                            <label className="block text-sm font-medium text-white/80">Specialization</label>
                             <select
                                 value={specialization}
                                 onChange={(e) => setSpecialization(e.target.value)}
@@ -194,9 +180,7 @@ export default function RoleSelectionModal({ isOpen, onClose, onSave }) {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-white/80">
-                                Main game
-                            </label>
+                            <label className="block text-sm font-medium text-white/80">Main game</label>
                             <select
                                 value={game}
                                 onChange={(e) => setGame(e.target.value)}
@@ -213,7 +197,6 @@ export default function RoleSelectionModal({ isOpen, onClose, onSave }) {
                     </div>
                 )}
 
-                {/* ACTIONS */}
                 <div className="mt-8 flex justify-end gap-2">
                     <button
                         onClick={onClose}
@@ -227,7 +210,7 @@ export default function RoleSelectionModal({ isOpen, onClose, onSave }) {
                         disabled={loading}
                         className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-black hover:bg-white/90 disabled:opacity-50"
                     >
-                        Save
+                        {loading ? "Saving..." : "Save"}
                     </button>
                 </div>
             </div>

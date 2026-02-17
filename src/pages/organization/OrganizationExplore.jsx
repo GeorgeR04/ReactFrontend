@@ -1,6 +1,8 @@
-import React, { useEffect, useState, useContext } from "react";
-import { AuthContext } from "../../security/AuthContext.jsx";
-import {apiFetch} from "../../config/apiBase.jsx";
+import React, { useEffect, useMemo, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { logoutThunk } from "../../store/slices/authSlice.js";
+import { apiFetch } from "../../config/apiBase.jsx";
 
 function Section({ title, children }) {
     return (
@@ -12,7 +14,14 @@ function Section({ title, children }) {
 }
 
 const OrganizationExplore = () => {
-    const { token } = useContext(AuthContext);
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
+
+    const token = useSelector((s) => s.auth.token);
+    const cleanToken = useMemo(
+        () => (typeof token === "string" ? token.trim().replace(/^Bearer\s+/i, "") : ""),
+        [token]
+    );
 
     const [organizations, setOrganizations] = useState([]);
     const [filtered, setFiltered] = useState([]);
@@ -22,12 +31,19 @@ const OrganizationExplore = () => {
     const [loading, setLoading] = useState(true);
     const [loadingMembers, setLoadingMembers] = useState(false);
 
+    const on401 = () => {
+        dispatch(logoutThunk());
+        navigate("/login", { replace: true });
+    };
+
     useEffect(() => {
         const fetchOrganizations = async () => {
             try {
-                const res = await apiFetch("/api/organizations", {
-                    headers: token ? { Authorization: `Bearer ${token}` } : {},
-                });
+                const headers = cleanToken ? { Authorization: `Bearer ${cleanToken}` } : {};
+                const res = await apiFetch("/api/organizations", { headers });
+
+                if (res.status === 401) return on401();
+
                 if (res.ok) {
                     const data = await res.json();
                     setOrganizations(data);
@@ -41,13 +57,12 @@ const OrganizationExplore = () => {
         };
 
         fetchOrganizations();
-    }, [token]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [cleanToken]);
 
     useEffect(() => {
         setFiltered(
-            organizations.filter((org) =>
-                org.name.toLowerCase().includes(search.toLowerCase())
-            )
+            organizations.filter((org) => org.name.toLowerCase().includes(search.toLowerCase()))
         );
     }, [search, organizations]);
 
@@ -57,15 +72,12 @@ const OrganizationExplore = () => {
         setLoadingMembers(true);
 
         try {
-            const res = await apiFetch(
-                `/organizations/${org.id}/members`,
-                {
-                    headers: token ? { Authorization: `Bearer ${token}` } : {},
-                }
-            );
-            if (res.ok) {
-                setMembers(await res.json());
-            }
+            const headers = cleanToken ? { Authorization: `Bearer ${cleanToken}` } : {};
+            const res = await apiFetch(`/organizations/${org.id}/members`, { headers });
+
+            if (res.status === 401) return on401();
+
+            if (res.ok) setMembers(await res.json());
         } catch (err) {
             console.error("Error fetching members", err);
         } finally {
@@ -88,7 +100,6 @@ const OrganizationExplore = () => {
                     Explore Organizations
                 </h1>
 
-                {/* Search */}
                 <div className="max-w-md mx-auto">
                     <input
                         placeholder="Search organizations…"
@@ -98,11 +109,8 @@ const OrganizationExplore = () => {
                     />
                 </div>
 
-                {/* Grid */}
                 {filtered.length === 0 ? (
-                    <p className="text-center text-white/60">
-                        No organizations found.
-                    </p>
+                    <p className="text-center text-white/60">No organizations found.</p>
                 ) : (
                     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                         {filtered.map((org) => (
@@ -119,9 +127,7 @@ const OrganizationExplore = () => {
                                             className="h-full w-full object-contain"
                                         />
                                     ) : (
-                                        <span className="text-sm text-white/40">
-                      No logo
-                    </span>
+                                        <span className="text-sm text-white/40">No logo</span>
                                     )}
                                 </div>
 
@@ -132,21 +138,17 @@ const OrganizationExplore = () => {
                                 </p>
 
                                 <p className="text-sm text-white/60">
-                                    Earnings:{" "}
-                                    {(org.totalEarnings ?? 0).toFixed(2)} €
+                                    Earnings: {(org.totalEarnings ?? 0).toFixed(2)} €
                                 </p>
                             </button>
                         ))}
                     </div>
                 )}
 
-                {/* Members panel */}
                 {selectedOrg && (
                     <Section title={`Members of ${selectedOrg.name}`}>
                         {loadingMembers ? (
-                            <p className="text-sm text-white/70">
-                                Loading members…
-                            </p>
+                            <p className="text-sm text-white/70">Loading members…</p>
                         ) : members.length > 0 ? (
                             <ul className="space-y-3">
                                 {members.map((m, i) => (
@@ -155,16 +157,13 @@ const OrganizationExplore = () => {
                                         className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm"
                                     >
                                         <p>
-                                            <span className="text-white/60">Team:</span>{" "}
-                                            {m.teamId}
+                                            <span className="text-white/60">Team:</span> {m.teamId}
                                         </p>
                                         <p>
-                                            <span className="text-white/60">Leader:</span>{" "}
-                                            {m.leaderId}
+                                            <span className="text-white/60">Leader:</span> {m.leaderId}
                                         </p>
                                         <p>
-                                            <span className="text-white/60">Role:</span>{" "}
-                                            {m.role}
+                                            <span className="text-white/60">Role:</span> {m.role}
                                         </p>
                                     </li>
                                 ))}

@@ -1,16 +1,23 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import "../../index.css";
 import backgroundImage1 from "../../assets/Image/third_party/regjsterImage/G2.jpg";
 import backgroundImage2 from "../../assets/Image/third_party/regjsterImage/TS.jpg";
 import backgroundImage3 from "../../assets/Image/third_party/regjsterImage/Navi.jpg";
 import backgroundImage4 from "../../assets/Image/third_party/regjsterImage/Liquid.jpg";
 import backgroundImage5 from "../../assets/Image/third_party/regjsterImage/faze.jpg";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 
 import CornerBadge from "../../components/ui/CornerBadge.jsx";
-import {apiFetch} from "../../config/apiBase.jsx";
+import { registerUser } from "../../store/slices/authSlice";
 
 function Register() {
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
+
+    const registerStatus = useSelector((s) => s.auth.registerStatus);
+    const registerError = useSelector((s) => s.auth.registerError);
+
     const [firstname, setFirstname] = useState("");
     const [lastname, setLastname] = useState("");
     const [username, setUsername] = useState("");
@@ -19,10 +26,12 @@ function Register() {
 
     const [errors, setErrors] = useState({});
     const [isLoaded, setIsLoaded] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const images = [backgroundImage1, backgroundImage2, backgroundImage3, backgroundImage4, backgroundImage5];
+    const images = useMemo(
+        () => [backgroundImage1, backgroundImage2, backgroundImage3, backgroundImage4, backgroundImage5],
+        []
+    );
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -57,33 +66,20 @@ function Register() {
 
         if (!validateForm()) return;
 
-        setIsSubmitting(true);
-
         const user = { firstname, lastname, username, email, password };
+        const action = await dispatch(registerUser(user));
 
-        try {
-            const response = await apiFetch("/api/auth/register", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(user),
-            });
-
-            const data = await response.text();
-            if (response.ok) {
-                alert("User registered successfully!");
-            } else {
-                setErrors({ form: data || "Registration failed." });
-            }
-        } catch {
-            setErrors({ form: "Error connecting to server." });
-        } finally {
-            setIsSubmitting(false);
+        if (registerUser.fulfilled.match(action)) {
+            // tu peux swap ça par un toast si tu veux
+            alert("User registered successfully!");
+            navigate("/login");
         }
     };
 
+    const isSubmitting = registerStatus === "loading";
+
     return (
         <main className="relative isolate min-h-screen overflow-hidden bg-neutral-950">
-            {/* Background slider */}
             {images.map((image, index) => (
                 <div
                     key={index}
@@ -100,9 +96,11 @@ function Register() {
                 />
             ))}
 
-            {/* overlays (cohérents) */}
             <div className="absolute inset-0 bg-black/35" aria-hidden="true" />
-            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/60" aria-hidden="true" />
+            <div
+                className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/60"
+                aria-hidden="true"
+            />
 
             <section className="relative z-10 mx-auto flex min-h-screen max-w-6xl items-center px-4 py-12 sm:px-6 lg:px-8">
                 <div
@@ -113,14 +111,10 @@ function Register() {
                     <h1 className="text-3xl font-semibold tracking-tight text-white">Register</h1>
                     <p className="mt-2 text-sm italic text-white/70">Become the new legend.</p>
 
-                    <form onSubmit={handleSubmit} className="mt-8 space-y-4" aria-describedby={errors.form ? "register-error" : undefined}>
-                        {errors.form && (
-                            <p
-                                id="register-error"
-                                className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200"
-                                aria-live="polite"
-                            >
-                                {errors.form}
+                    <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+                        {(errors.form || registerError) && (
+                            <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                                {errors.form || registerError}
                             </p>
                         )}
 

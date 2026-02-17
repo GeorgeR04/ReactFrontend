@@ -1,7 +1,8 @@
-import React, { useState, useContext } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AuthContext } from "../../security/AuthContext.jsx";
-import {apiFetch} from "../../config/apiBase.jsx";
+import { useDispatch, useSelector } from "react-redux";
+import { logoutThunk } from "../../store/slices/authSlice.js";
+import { apiFetch } from "../../config/apiBase.jsx";
 
 function Section({ title, children }) {
     return (
@@ -13,8 +14,14 @@ function Section({ title, children }) {
 }
 
 const GameSuggest = () => {
-    const { token } = useContext(AuthContext);
+    const dispatch = useDispatch();
     const navigate = useNavigate();
+
+    const token = useSelector((s) => s.auth.token);
+    const cleanToken = useMemo(
+        () => (typeof token === "string" ? token.trim().replace(/^Bearer\s+/i, "") : ""),
+        [token]
+    );
 
     const [form, setForm] = useState({
         name: "",
@@ -26,10 +33,16 @@ const GameSuggest = () => {
 
     const [status, setStatus] = useState("idle"); // idle | sending | success | error
 
-    const update = (k, v) =>
-        setForm((f) => ({ ...f, [k]: v }));
+    const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+    const on401 = () => {
+        dispatch(logoutThunk());
+        navigate("/login", { replace: true });
+    };
 
     const handleSubmit = async () => {
+        if (!cleanToken) return on401();
+
         if (!form.name || !form.description) {
             alert("Please fill required fields.");
             return;
@@ -38,24 +51,19 @@ const GameSuggest = () => {
         setStatus("sending");
 
         try {
-            const res = await apiFetch(
-                "/games/suggest",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        ...(token && { Authorization: `Bearer ${token}` }),
-                    },
-                    body: JSON.stringify({
-                        name: form.name,
-                        type: form.type,
-                        description: form.description,
-                        publisher: form.publisher,
-                        yearOfExistence: parseInt(form.year) || null,
-                    }),
-                }
-            );
+            const res = await apiFetch("/games/suggest", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${cleanToken}` },
+                body: {
+                    name: form.name,
+                    type: form.type,
+                    description: form.description,
+                    publisher: form.publisher,
+                    yearOfExistence: parseInt(form.year, 10) || null,
+                },
+            });
 
+            if (res.status === 401) return on401();
             if (!res.ok) throw new Error();
 
             setStatus("success");
@@ -68,13 +76,10 @@ const GameSuggest = () => {
     return (
         <main className="min-h-screen bg-neutral-950 text-white">
             <section className="mx-auto max-w-4xl px-4 py-12 space-y-6">
-                <h1 className="text-3xl font-semibold text-center sm:text-4xl">
-                    Suggest a Game
-                </h1>
+                <h1 className="text-3xl font-semibold text-center sm:text-4xl">Suggest a Game</h1>
 
                 <p className="mx-auto max-w-2xl text-center text-sm text-white/70">
-                    Can’t find your favorite game? Suggest it to the platform and
-                    help us grow the competitive ecosystem.
+                    Can’t find your favorite game? Suggest it to the platform and help us grow the competitive ecosystem.
                 </p>
 
                 <Section title="Game Proposal">
@@ -116,11 +121,8 @@ const GameSuggest = () => {
                     />
                 </Section>
 
-                {/* Feedback */}
                 {status === "success" && (
-                    <p className="text-center text-green-400 text-sm">
-                        Game suggestion sent successfully!
-                    </p>
+                    <p className="text-center text-green-400 text-sm">Game suggestion sent successfully!</p>
                 )}
 
                 {status === "error" && (

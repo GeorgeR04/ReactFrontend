@@ -1,8 +1,11 @@
 import { useContext, useState } from "react";
-import { AuthContext } from "../../../security/AuthContext.jsx";
+import { useDispatch, useSelector } from "react-redux";
+import { apiFetch } from "../../../config/apiBase.jsx";
+import { logoutThunk } from "../../../store/slices/authSlice";
 
 export default function SecuritySection() {
-    const { token, logout } = useContext(AuthContext);
+    const dispatch = useDispatch();
+    const token = useSelector((s) => s.auth.token);
 
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [pwOpen, setPwOpen] = useState(false);
@@ -11,22 +14,16 @@ export default function SecuritySection() {
     const [pwError, setPwError] = useState("");
     const [deleteError, setDeleteError] = useState("");
 
-    // 🗑️ DELETE ACCOUNT
     const handleDelete = async () => {
         setDeleteError("");
 
         try {
-            const res = await fetch("http://localhost:8080/api/users/me", {
+            const res = await apiFetch("/api/users/me", {
                 method: "DELETE",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
+                headers: { Authorization: `Bearer ${token}` },
             });
-
-            if (!res.ok) {
-                const msg = await res.text();
-                throw new Error(msg || "Delete failed");
-            }
+            if (!res.ok) throw new Error((await res.text()) || "Delete failed");
+            dispatch(logoutThunk());
 
             logout();
         } catch (e) {
@@ -49,22 +46,12 @@ export default function SecuritySection() {
         }
 
         try {
-            const res = await fetch(
-                "http://localhost:8080/api/users/me/password",
-                {
-                    method: "PUT",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({ newPassword }),
-                }
-            );
-
-            if (!res.ok) {
-                const msg = await res.text();
-                throw new Error(msg || "Password update failed");
-            }
+            const res = await apiFetch("/api/users/me/password", {
+                method: "PUT",
+                headers: { Authorization: `Bearer ${token}` },
+                body: { newPassword },
+            });
+            if (!res.ok) throw new Error((await res.text()) || "Password update failed");
 
             setPwOpen(false);
             setNewPassword("");

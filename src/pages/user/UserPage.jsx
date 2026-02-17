@@ -1,7 +1,10 @@
-import React, { useEffect, useMemo, useState, useContext } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { AuthContext } from "../../security/AuthContext.jsx";
-import { apiFetch } from "../../config/apiBase";
+import { useDispatch, useSelector } from "react-redux";
+import { logoutThunk } from "../../store/slices/authSlice";
+import { fetchMyProfile, fetchProfileByUsername } from "../../store/slices/profilesSlice";
+
+
 function cx(...classes) {
     return classes.filter(Boolean).join(" ");
 }
@@ -86,63 +89,53 @@ function TournamentCard({ name, imgSrc, badge }) {
         </div>
     );
 }
-
-export default function UserPage() {
+export default function UserPage(props) {
+    const { username = "" } = useParams();
     const navigate = useNavigate();
-    const { username } = useParams();
-    const { token, logout } = useContext(AuthContext);
-
-    const cleanToken = useMemo(() => (token ? token.trim() : ""), [token]);
-
-    const [userProfile, setUserProfile] = useState(null);
-    const [status, setStatus] = useState("loading"); // loading | ready | error
-    const [error, setError] = useState("");
     const [slideIn, setSlideIn] = useState(false);
+    const [activeTab, setActiveTab] = useState("player");
+    const dispatch = useDispatch();
+    const token = useSelector((s) => s.auth.token);
+    const cleanToken = useMemo(() => (token ? token.trim() : ""), [token]);
+    const me = useSelector((s) => s.profiles.me);
+    const other = useSelector((s) =>
+        username ? s.profiles.byUsername?.[username] : undefined
+    );
 
-    const [activeTab, setActiveTab] = useState("player"); // player | organizer
+    const profileState =
+        username === "settings"
+            ? me
+            : (other ?? { data: null, status: "idle", error: "" });
+
+    const userProfile = profileState.data;
+    const status = profileState.status === "idle" ? "loading" : profileState.status;
+    const error = profileState.error;
 
     useEffect(() => {
         setSlideIn(true);
 
         if (!cleanToken) {
             navigate("/login");
-            return;
+            return () => setSlideIn(false);
         }
 
-        const fetchUserProfile = async () => {
-            setStatus("loading");
-            setError("");
+        if (username === "settings") {
+            dispatch(fetchMyProfile({ token: cleanToken }));
+        } else {
+            dispatch(fetchProfileByUsername({ username, token: cleanToken }));
+        }
 
-            try {
-                const endpoint =
-                    username === "settings"
-                        ? "/profile/me"
-                        : `/profile/username/${username}`;
-
-                const response = await apiFetch(endpoint, {
-                    headers: { Authorization: `Bearer ${cleanToken}` },
-                });
-
-                if (response.status === 401) {
-                    logout();
-                    navigate("/login");
-                    return;
-                }
-
-                if (!response.ok) throw new Error("User not found");
-
-                const data = await response.json();
-                setUserProfile(data);
-                setStatus("ready");
-            } catch (err) {
-                setStatus("error");
-                setError(err?.message || "An error occurred.");
-            }
-        };
-
-        fetchUserProfile();
         return () => setSlideIn(false);
-    }, [username, cleanToken, navigate, logout]);
+    }, [username, cleanToken, dispatch, navigate]);
+
+    useEffect(() => {
+        if (!error) return;
+        const e = String(error).toLowerCase();
+        if (e.includes("unauthorized")) {
+            dispatch(logoutThunk());
+            navigate("/login");
+        }
+    }, [error, dispatch, navigate]);
 
     // ---- role logic ----
     const roleRaw = useMemo(() => String(userProfile?.role || "").toLowerCase(), [userProfile?.role]);

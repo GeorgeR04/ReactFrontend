@@ -1,30 +1,48 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {apiFetch} from "../../../config/apiBase.jsx";
+import { useDispatch, useSelector } from "react-redux";
+import { logoutThunk } from "../../../store/slices/authSlice.js";
+import { apiFetch } from "../../../config/apiBase.jsx";
 
 function cx(...classes) {
     return classes.filter(Boolean).join(" ");
 }
 
-const OrganizationInvitesPanel = ({ user, token }) => {
+const OrganizationInvitesPanel = () => {
+    const dispatch = useDispatch();
+    const user = useSelector((s) => s.auth.user);
+    const token = useSelector((s) => s.auth.token);
+
+    const cleanToken = useMemo(
+        () => (typeof token === "string" ? token.trim().replace(/^Bearer\s+/i, "") : ""),
+        [token]
+    );
+
     const [invites, setInvites] = useState([]);
-    const cleanToken = useMemo(() => token?.trim() || "", [token]);
+
+    const on401 = () => dispatch(logoutThunk());
 
     useEffect(() => {
         const fetchInvites = async () => {
             try {
-                const res = await apiFetch(
-                    `/invites/pending?leaderId=${user.username}`,
-                    { headers: { Authorization: `Bearer ${cleanToken}` } }
-                );
+                const res = await apiFetch(`/invites/pending?leaderId=${user.username}`, {
+                    headers: { Authorization: `Bearer ${cleanToken}` },
+                });
+
+                if (res.status === 401) return on401();
+
                 if (res.ok) {
                     const data = await res.json();
                     setInvites(Array.isArray(data) ? data : []);
+                } else {
+                    setInvites([]);
                 }
             } catch (err) {
                 console.error("Failed to load invites", err);
             }
         };
+
         if (user?.username && cleanToken) fetchInvites();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?.username, cleanToken]);
 
     const handleAccept = async (inviteId) => {
@@ -32,6 +50,7 @@ const OrganizationInvitesPanel = ({ user, token }) => {
             method: "POST",
             headers: { Authorization: `Bearer ${cleanToken}` },
         });
+        if (res.status === 401) return on401();
         if (res.ok) setInvites((prev) => prev.filter((i) => i.id !== inviteId));
     };
 
@@ -40,18 +59,17 @@ const OrganizationInvitesPanel = ({ user, token }) => {
             method: "POST",
             headers: { Authorization: `Bearer ${cleanToken}` },
         });
+        if (res.status === 401) return on401();
         if (res.ok) setInvites((prev) => prev.filter((i) => i.id !== inviteId));
     };
 
+    if (!user || !cleanToken) return <p className="text-xs text-white/60">Loading…</p>;
     if (!invites.length) return <p className="text-xs text-white/60">No invites</p>;
 
     return (
         <ul className="space-y-2">
             {invites.map((invite) => (
-                <li
-                    key={invite.id}
-                    className="rounded-2xl border border-white/10 bg-black/30 p-3 text-sm"
-                >
+                <li key={invite.id} className="rounded-2xl border border-white/10 bg-black/30 p-3 text-sm">
                     <div className="text-xs text-white/60">From</div>
                     <div className="text-sm font-semibold text-white">{invite.fromTeamId}</div>
 

@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { AuthContext } from "../../security/AuthContext.jsx";
+import { useDispatch, useSelector } from "react-redux";
+import { logoutThunk } from "../../store/slices/authSlice.js";
 import PlayoffBracket from "./PlayoffBracket.jsx";
-import {apiFetch} from "../../config/apiBase.jsx";
+import { apiFetch } from "../../config/apiBase.jsx";
 
 function Section({ title, children }) {
     return (
@@ -16,7 +17,10 @@ function Section({ title, children }) {
 const TournamentDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { token, user, isTokenExpired } = useContext(AuthContext);
+    const dispatch = useDispatch();
+
+    const token = useSelector((s) => s.auth.token);
+    const cleanToken = (token || "").trim();
 
     const [tournament, setTournament] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -25,17 +29,19 @@ const TournamentDetails = () => {
     const [matches, setMatches] = useState([]);
 
     useEffect(() => {
-        const headers = { "Content-Type": "application/json" };
-        if (token && !isTokenExpired(token)) {
-            headers.Authorization = `Bearer ${token}`;
-        }
+        const headers = {};
+        if (cleanToken) headers.Authorization = `Bearer ${cleanToken}`;
 
         const fetchAll = async () => {
             try {
-                const tRes = await apiFetch(
-                    `/api/tournaments/${id}`,
-                    { headers }
-                );
+                const tRes = await apiFetch(`/api/tournaments/${id}`, { headers });
+
+                if (tRes.status === 401) {
+                    dispatch(logoutThunk());
+                    navigate("/login", { replace: true });
+                    return;
+                }
+
                 if (!tRes.ok) throw new Error();
                 const tData = await tRes.json();
                 setTournament(tData);
@@ -45,6 +51,12 @@ const TournamentDetails = () => {
                     apiFetch(`/api/tournaments/${id}/commentary`, { headers }),
                     apiFetch(`/api/tournaments/${id}/matches`, { headers }),
                 ]);
+
+                if ([lm, com, mat].some((r) => r.status === 401)) {
+                    dispatch(logoutThunk());
+                    navigate("/login", { replace: true });
+                    return;
+                }
 
                 if (lm.ok) setLastMatch(await lm.json());
                 if (com.ok) setCommentary(await com.json());
@@ -57,7 +69,7 @@ const TournamentDetails = () => {
         };
 
         fetchAll();
-    }, [id, token, isTokenExpired]);
+    }, [id, cleanToken, dispatch, navigate]);
 
     if (loading) {
         return (
@@ -78,19 +90,12 @@ const TournamentDetails = () => {
     return (
         <main className="min-h-screen bg-neutral-950 text-white">
             <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8 space-y-6">
-                {/* Header */}
                 <div className="rounded-2xl border border-white/10 bg-black/55 p-6 shadow-2xl backdrop-blur">
-                    <h1 className="text-2xl font-semibold sm:text-3xl">
-                        {tournament.name}
-                    </h1>
-                    <p className="mt-2 text-white/70 max-w-3xl">
-                        {tournament.description}
-                    </p>
+                    <h1 className="text-2xl font-semibold sm:text-3xl">{tournament.name}</h1>
+                    <p className="mt-2 text-white/70 max-w-3xl">{tournament.description}</p>
                 </div>
 
-                {/* Grid */}
                 <div className="grid gap-6 lg:grid-cols-3">
-                    {/* Left */}
                     <div className="space-y-6">
                         <Section title="Overview">
                             <ul className="text-sm text-white/80 space-y-1">
@@ -100,8 +105,7 @@ const TournamentDetails = () => {
                                 <li>Cash Prize: ${tournament.cashPrize}</li>
                                 <li>Trust Factor: {tournament.trustFactorRequirement}</li>
                                 <li>
-                                    Rank: {tournament.minRankRequirement} –{" "}
-                                    {tournament.maxRankRequirement}
+                                    Rank: {tournament.minRankRequirement} – {tournament.maxRankRequirement}
                                 </li>
                             </ul>
                         </Section>
@@ -130,7 +134,6 @@ const TournamentDetails = () => {
                         </Section>
                     </div>
 
-                    {/* Right */}
                     <div className="lg:col-span-2 space-y-6">
                         <Section title="Rules">
                             <p className="text-sm text-white/80">
@@ -172,9 +175,7 @@ const TournamentDetails = () => {
                                     ))}
                                 </ul>
                             ) : (
-                                <p className="text-sm text-white/60">
-                                    No commentary available.
-                                </p>
+                                <p className="text-sm text-white/60">No commentary available.</p>
                             )}
                         </Section>
                     </div>

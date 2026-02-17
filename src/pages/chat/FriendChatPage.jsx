@@ -1,19 +1,26 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { useLocation } from "react-router-dom";
-import { AuthContext } from "../../security/AuthContext";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { logoutThunk } from "../../store/slices/authSlice.js";
+
 import AddFriendPanel from "./panel/AddFriendPanel.jsx";
 import ReceivedRequestsPanel from "./panel/ReceivedRequestsPanel.jsx";
 import OrganizationInvitesPanel from "./panel/OrganizationInvitesPanel.jsx";
+
 import { Client } from "@stomp/stompjs";
-import {apiFetch, wsUrl} from "../../config/apiBase.jsx";
+import { apiFetch, wsUrl } from "../../config/apiBase.jsx";
 
 function cx(...classes) {
     return classes.filter(Boolean).join(" ");
 }
 
 const FriendChatPage = () => {
-    const { user, token } = useContext(AuthContext);
     const location = useLocation();
+    const navigate = useNavigate();
+    const dispatch = useDispatch();
+
+    const user = useSelector((s) => s.auth.user);
+    const token = useSelector((s) => s.auth.token);
 
     const cleanToken = useMemo(
         () => (typeof token === "string" ? token.trim().replace(/^Bearer\s+/i, "") : ""),
@@ -21,31 +28,38 @@ const FriendChatPage = () => {
     );
 
     const [friends, setFriends] = useState([]);
-    const [friendsStatus, setFriendsStatus] = useState("loading"); // loading | ready | error
+    const [friendsStatus, setFriendsStatus] = useState("loading");
     const [friendsError, setFriendsError] = useState("");
 
     const [selectedFriend, setSelectedFriend] = useState(null);
     const [activeConversationId, setActiveConversationId] = useState(null);
 
     const [messages, setMessages] = useState([]);
-    const [messagesStatus, setMessagesStatus] = useState("idle"); // idle | loading | ready | error
+    const [messagesStatus, setMessagesStatus] = useState("idle");
     const [messagesError, setMessagesError] = useState("");
 
     const [newMessage, setNewMessage] = useState("");
-    const [stompClient, setStompClient] = useState(null);
+
+    // ✅ STOMP client en ref (évite re-render + évite destroy/recreate sur deps instables)
+    const stompRef = useRef(null);
+    const [stompConnected, setStompConnected] = useState(false);
 
     const [showContent, setShowContent] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     const listEndRef = useRef(null);
     const activeConversationIdRef = useRef(null);
-    // soft fade-in
+
+    const on401 = () => {
+        dispatch(logoutThunk());
+        navigate("/login", { replace: true });
+    };
+
     useEffect(() => {
         const t = setTimeout(() => setShowContent(true), 150);
         return () => clearTimeout(t);
     }, []);
 
-    // Scroll to bottom on new messages
     useEffect(() => {
         listEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages.length, selectedFriend?.id]);
@@ -54,16 +68,24 @@ const FriendChatPage = () => {
         activeConversationIdRef.current = activeConversationId;
     }, [activeConversationId]);
 
-    // Connect STOMP
+    // ✅ WebSocket / STOMP (stable)
     useEffect(() => {
-        if (!cleanToken || !user) return;
+        if (!cleanToken || !user?.username) return;
+
+        // évite double init si déjà actif
+        if (stompRef.current?.active) return;
 
         const client = new Client({
             brokerURL: wsUrl("/ws"),
-            connectHeaders: { Authorization: `Bearer ${cleanToken}` },
             reconnectDelay: 5000,
+
+            // ✅ Important: sur reconnect, headers à jour
+            beforeConnect: () => {
+                client.connectHeaders = { Authorization: `Bearer ${cleanToken}` };
+            },
+
             onConnect: () => {
-                setStompClient(client);
+                setStompConnected(true);
 
                 client.subscribe("/topic/public", (message) => {
                     try {
@@ -80,20 +102,33 @@ const FriendChatPage = () => {
                     }
                 });
             },
-            onStompError: (err) => console.error("[STOMP ERROR]", err),
-            onWebSocketError: (err) => console.error("[WS ERROR]", err),
+
+            onWebSocketClose: (evt) => {
+                setStompConnected(false);
+                console.warn("[WS CLOSE]", evt?.code, evt?.reason);
+            },
+
+            onStompError: (err) => {
+                console.error("[STOMP ERROR]", err);
+            },
+
+            onWebSocketError: (err) => {
+                console.error("[WS ERROR]", err);
+            },
         });
 
+        stompRef.current = client;
         client.activate();
 
         return () => {
             try {
                 client.deactivate();
             } catch {}
+            stompRef.current = null;
+            setStompConnected(false);
         };
-    }, [cleanToken, user]);
+    }, [cleanToken, user?.username]);
 
-    // Fetch friends list
     useEffect(() => {
         if (!user || !cleanToken) return;
 
@@ -106,6 +141,7 @@ const FriendChatPage = () => {
                     headers: { Authorization: `Bearer ${cleanToken}` },
                 });
 
+                if (res.status === 401) return on401();
                 if (!res.ok) throw new Error("Failed to load friends.");
 
                 const data = await res.json();
@@ -118,7 +154,8 @@ const FriendChatPage = () => {
         };
 
         fetchFriends();
-    }, [user, cleanToken]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.username, cleanToken]);
 
     const loadMessages = async (friend) => {
         if (!friend?.id) return;
@@ -130,27 +167,26 @@ const FriendChatPage = () => {
         setIsSidebarOpen(false);
 
         try {
-            // 1) conversation id
             const res = await apiFetch(`/private/conversation-with/${friend.id}`, {
                 headers: { Authorization: `Bearer ${cleanToken}` },
             });
 
+            if (res.status === 401) return on401();
             if (!res.ok) throw new Error("Failed to open conversation.");
+
             const conversationId = await res.text();
             setActiveConversationId(conversationId);
 
-            // 2) messages
             const msgRes = await apiFetch(`/chat/conversation/${friend.id}`, {
                 headers: { Authorization: `Bearer ${cleanToken}` },
             });
 
+            if (msgRes.status === 401) return on401();
             if (!msgRes.ok) throw new Error("Failed to load messages.");
-            const msgs = await msgRes.json();
 
+            const msgs = await msgRes.json();
             setMessages(Array.isArray(msgs) ? msgs : []);
             setMessagesStatus("ready");
-
-
         } catch (err) {
             setMessagesStatus("error");
             setMessagesError(err?.message || "Error loading messages.");
@@ -165,17 +201,19 @@ const FriendChatPage = () => {
         const withUser = params.get("with");
         if (!withUser) return;
 
-        // si déjà ouvert, ne refait pas
         if (selectedFriend?.username && selectedFriend.username.toLowerCase() === withUser.toLowerCase()) return;
 
         const found = friends.find((f) => String(f.username).toLowerCase() === String(withUser).toLowerCase());
-        if (found) {
-            loadMessages(found);
-        }
-    }, [friendsStatus, friends, location.search]); // volontairement sans selectedFriend/loadMessages pour éviter boucles
+        if (found) loadMessages(found);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [friendsStatus, friends, location.search]);
 
     const sendMessage = () => {
-        if (!newMessage.trim() || !selectedFriend || !activeConversationId || !stompClient?.connected) return;
+        const client = stompRef.current;
+
+        if (!newMessage.trim() || !selectedFriend || !activeConversationId) return;
+        if (!user?.id) return;
+        if (!client?.connected) return;
 
         const payload = {
             senderId: user.id,
@@ -185,19 +223,12 @@ const FriendChatPage = () => {
             messageType: "PRIVATE",
         };
 
-        stompClient.publish({
+        client.publish({
             destination: "/app/chat.sendMessage",
             body: JSON.stringify(payload),
         });
 
         setNewMessage("");
-    };
-
-    const onComposerKeyDown = (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            sendMessage();
-        }
     };
 
     const avatarSrc = (base64) => (base64 ? `data:image/jpeg;base64,${base64}` : "");
@@ -211,7 +242,6 @@ const FriendChatPage = () => {
             )}
         >
             <div className="mx-auto flex min-h-screen max-w-7xl">
-                {/* Mobile top bar */}
                 <div className="fixed left-0 right-0 top-0 z-40 border-b border-white/10 bg-black text-white md:hidden">
                     <div className="flex items-center justify-between px-4 py-3">
                         <button
@@ -226,7 +256,6 @@ const FriendChatPage = () => {
                     </div>
                 </div>
 
-                {/* Sidebar */}
                 <aside
                     className={cx(
                         "fixed inset-y-0 left-0 z-50 w-[320px] border-r border-white/10 bg-black p-4 overflow-y-auto md:static md:z-auto md:h-auto md:w-[340px]",
@@ -281,7 +310,11 @@ const FriendChatPage = () => {
                                                     <div className="flex items-center gap-3">
                                                         <div className="h-10 w-10 overflow-hidden rounded-full border border-white/10 bg-white/10">
                                                             {f.profileImage ? (
-                                                                <img src={avatarSrc(f.profileImage)} alt={`${f.username} avatar`} className="h-full w-full object-cover" />
+                                                                <img
+                                                                    src={avatarSrc(f.profileImage)}
+                                                                    alt={`${f.username} avatar`}
+                                                                    className="h-full w-full object-cover"
+                                                                />
                                                             ) : (
                                                                 <div className="h-full w-full" />
                                                             )}
@@ -307,16 +340,14 @@ const FriendChatPage = () => {
                         <div className="rounded-2xl border border-white/10 bg-black/55 p-4 shadow-2xl backdrop-blur">
                             <h2 className="text-base font-semibold">Organization Invites</h2>
                             <div className="mt-3">
-                                {user ? <OrganizationInvitesPanel user={user} token={token} /> : <p className="text-sm text-white/70">Loading…</p>}
+                                <OrganizationInvitesPanel />
                             </div>
                         </div>
                     </div>
                 </aside>
 
-                {/* Main chat */}
                 <main className="flex min-h-screen flex-1 flex-col px-4 pb-6 pt-20 md:pt-6">
                     <div className="flex-1 rounded-2xl border border-white/10 bg-black/55 shadow-2xl backdrop-blur">
-                        {/* Header */}
                         <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
                             <div className="min-w-0">
                                 <div className="text-sm text-white/60">Conversation</div>
@@ -334,10 +365,11 @@ const FriendChatPage = () => {
                             )}
                         </div>
 
-                        {/* Messages */}
                         <div className="h-[calc(100vh-260px)] md:h-[calc(100vh-220px)] overflow-y-auto px-4 py-4">
                             {!selectedFriend && (
-                                <div className="flex h-full items-center justify-center text-sm text-white/60">Select a friend to chat with</div>
+                                <div className="flex h-full items-center justify-center text-sm text-white/60">
+                                    Select a friend to chat with
+                                </div>
                             )}
 
                             {selectedFriend && messagesStatus === "loading" && <div className="text-sm text-white/70">Loading messages...</div>}
@@ -355,14 +387,18 @@ const FriendChatPage = () => {
                             {selectedFriend && messages.length > 0 && (
                                 <div className="space-y-3">
                                     {messages.map((msg, i) => {
-                                        const isMine = String(msg.senderId) === String(user.id);
+                                        const isMine = String(msg.senderId) === String(user?.id);
 
                                         return (
                                             <div key={i} className={cx("flex items-end gap-2", isMine ? "justify-end" : "justify-start")}>
                                                 {!isMine && (
                                                     <div className="h-8 w-8 overflow-hidden rounded-full border border-white/10 bg-white/10">
                                                         {selectedFriend.profileImage ? (
-                                                            <img src={avatarSrc(selectedFriend.profileImage)} alt="avatar" className="h-full w-full object-cover" />
+                                                            <img
+                                                                src={avatarSrc(selectedFriend.profileImage)}
+                                                                alt="avatar"
+                                                                className="h-full w-full object-cover"
+                                                            />
                                                         ) : (
                                                             <div className="h-full w-full" />
                                                         )}
@@ -381,7 +417,7 @@ const FriendChatPage = () => {
 
                                                 {isMine && (
                                                     <div className="h-8 w-8 overflow-hidden rounded-full border border-white/10 bg-white/10">
-                                                        {user.profileImage ? (
+                                                        {user?.profileImage ? (
                                                             <img src={avatarSrc(user.profileImage)} alt="avatar" className="h-full w-full object-cover" />
                                                         ) : (
                                                             <div className="h-full w-full" />
@@ -396,36 +432,43 @@ const FriendChatPage = () => {
                             )}
                         </div>
 
-                        {/* Composer */}
                         <div className="border-t border-white/10 p-4">
                             <div className="flex gap-2">
-                <textarea
-                    className="min-h-[44px] flex-1 resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:opacity-60"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyDown={onComposerKeyDown}
-                    placeholder={selectedFriend ? "Type a message... (Enter to send)" : "Select a friend to start chatting..."}
-                    disabled={!selectedFriend}
-                    rows={1}
-                />
+                                <textarea
+                                    className="min-h-[44px] flex-1 resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:opacity-60"
+                                    value={newMessage}
+                                    onChange={(e) => setNewMessage(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter" && !e.shiftKey) {
+                                            e.preventDefault();
+                                            sendMessage();
+                                        }
+                                    }}
+                                    placeholder={selectedFriend ? "Type a message... (Enter to send)" : "Select a friend to start chatting..."}
+                                    disabled={!selectedFriend}
+                                    rows={1}
+                                />
                                 <button
                                     onClick={sendMessage}
-                                    disabled={!selectedFriend || !newMessage.trim() || !stompClient?.connected}
+                                    disabled={!selectedFriend || !newMessage.trim() || !stompConnected}
                                     className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-neutral-950 hover:bg-white/90 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
                                     Send
                                 </button>
                             </div>
 
-                            {!stompClient?.connected && <p className="mt-2 text-xs text-white/50">Connecting to chat server…</p>}
+                            {!stompConnected && <p className="mt-2 text-xs text-white/50">Connecting to chat server…</p>}
                         </div>
                     </div>
                 </main>
             </div>
 
-            {/* Mobile overlay when sidebar open */}
             {isSidebarOpen && (
-                <button aria-label="Close sidebar" className="fixed inset-0 z-40 bg-black/60 md:hidden" onClick={() => setIsSidebarOpen(false)} />
+                <button
+                    aria-label="Close sidebar"
+                    className="fixed inset-0 z-40 bg-black/60 md:hidden"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
             )}
         </div>
     );

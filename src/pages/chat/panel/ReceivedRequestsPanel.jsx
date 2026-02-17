@@ -1,23 +1,35 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
-import { AuthContext } from "../../../security/AuthContext.jsx";
+import React, { useEffect, useMemo, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { logoutThunk } from "../../../store/slices/authSlice.js";
 import { CheckCircle, XCircle } from "lucide-react";
-import {apiFetch} from "../../../config/apiBase.jsx";
+import { apiFetch } from "../../../config/apiBase.jsx";
 
 function cx(...classes) {
     return classes.filter(Boolean).join(" ");
 }
 
 const ReceivedRequestsPanel = () => {
-    const { user, token } = useContext(AuthContext);
+    const dispatch = useDispatch();
+    const user = useSelector((s) => s.auth.user);
+    const token = useSelector((s) => s.auth.token);
+
+    const cleanToken = useMemo(
+        () => (typeof token === "string" ? token.trim().replace(/^Bearer\s+/i, "") : ""),
+        [token]
+    );
+
     const [requests, setRequests] = useState([]);
 
-    const cleanToken = useMemo(() => token?.trim() || "", [token]);
+    const on401 = () => dispatch(logoutThunk());
 
     const fetchRequests = async () => {
         try {
             const res = await apiFetch(`/friends/received?username=${user.username}`, {
                 headers: { Authorization: `Bearer ${cleanToken}` },
             });
+
+            if (res.status === 401) return on401();
+
             const data = await res.json();
             setRequests(Array.isArray(data) ? data : []);
         } catch (err) {
@@ -27,7 +39,7 @@ const ReceivedRequestsPanel = () => {
 
     const respondToRequest = async (id, accept) => {
         try {
-            await apiFetch(`/friends/respond?requestId=${id}&accept=${accept}`, {
+            const res = await apiFetch(`/friends/respond?requestId=${id}&accept=${accept}`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -35,6 +47,9 @@ const ReceivedRequestsPanel = () => {
                 },
                 body: "{}",
             });
+
+            if (res.status === 401) return on401();
+
             fetchRequests();
         } catch (err) {
             console.error("Failed to respond to request", err);
@@ -42,11 +57,11 @@ const ReceivedRequestsPanel = () => {
     };
 
     useEffect(() => {
-        if (user?.username) fetchRequests();
+        if (user?.username && cleanToken) fetchRequests();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user?.username]);
+    }, [user?.username, cleanToken]);
 
-    if (!user || !token) return null;
+    if (!user || !cleanToken) return null;
 
     return (
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
@@ -69,8 +84,7 @@ const ReceivedRequestsPanel = () => {
                                 />
                                 <div className="min-w-0">
                                     <p className="truncate text-sm font-semibold text-white">
-                                        {r.sender.username}{" "}
-                                        <span className="text-xs text-white/50">({r.sender.role})</span>
+                                        {r.sender.username} <span className="text-xs text-white/50">({r.sender.role})</span>
                                     </p>
                                     <p className="truncate text-xs text-white/60">
                                         {r.sender.firstname} {r.sender.lastname}

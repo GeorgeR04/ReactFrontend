@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AuthContext } from "../../security/AuthContext.jsx";
-import {apiFetch} from "../../config/apiBase.jsx";
+import { useSelector } from "react-redux";
+import { apiFetch } from "../../config/apiBase.jsx";
 
 const TeamExplore = () => {
-    const { token, user } = useContext(AuthContext);
+    const user = useSelector((s) => s.auth.user);
     const navigate = useNavigate();
 
     const [teams, setTeams] = useState([]);
@@ -30,11 +30,7 @@ const TeamExplore = () => {
     }, []);
 
     useEffect(() => {
-        setFiltered(
-            teams.filter((t) =>
-                t.name.toLowerCase().includes(search.toLowerCase())
-            )
-        );
+        setFiltered(teams.filter((t) => t.name.toLowerCase().includes(search.toLowerCase())));
     }, [search, teams]);
 
     if (loading) {
@@ -48,11 +44,8 @@ const TeamExplore = () => {
     return (
         <main className="min-h-screen bg-neutral-950 text-white">
             <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-                <h1 className="text-3xl font-semibold text-center sm:text-4xl">
-                    Explore Teams
-                </h1>
+                <h1 className="text-3xl font-semibold text-center sm:text-4xl">Explore Teams</h1>
 
-                {/* Create Team */}
                 {user?.role === "player" && (
                     <div className="mt-6 text-center">
                         <button
@@ -64,7 +57,6 @@ const TeamExplore = () => {
                     </div>
                 )}
 
-                {/* Search */}
                 <div className="mt-10 max-w-md mx-auto">
                     <input
                         placeholder="Search team…"
@@ -74,11 +66,8 @@ const TeamExplore = () => {
                     />
                 </div>
 
-                {/* List */}
                 {filtered.length === 0 ? (
-                    <p className="mt-12 text-center text-white/60">
-                        No teams found.
-                    </p>
+                    <p className="mt-12 text-center text-white/60">No teams found.</p>
                 ) : (
                     <ul className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                         {filtered.map((team) => (
@@ -86,7 +75,6 @@ const TeamExplore = () => {
                                 key={team.id}
                                 className="rounded-2xl border border-white/10 bg-black/55 p-4 shadow-2xl backdrop-blur"
                             >
-                                {/* Logo */}
                                 <div className="h-40 rounded-xl overflow-hidden bg-white/5 flex items-center justify-center">
                                     {team.teamLogo ? (
                                         <img
@@ -95,23 +83,15 @@ const TeamExplore = () => {
                                             className="h-full w-full object-cover"
                                         />
                                     ) : (
-                                        <span className="text-sm text-white/40">
-                      No logo
-                    </span>
+                                        <span className="text-sm text-white/40">No logo</span>
                                     )}
                                 </div>
 
-                                <h2 className="mt-4 text-lg font-semibold">
-                                    {team.name}
-                                </h2>
+                                <h2 className="mt-4 text-lg font-semibold">{team.name}</h2>
 
-                                <p className="mt-1 text-sm text-white/70">
-                                    Game: {team.gameName}
-                                </p>
+                                <p className="mt-1 text-sm text-white/70">Game: {team.gameName}</p>
 
-                                <p className="mt-1 text-sm text-white/60">
-                                    Members: {team.playerIds?.length || 0}
-                                </p>
+                                <p className="mt-1 text-sm text-white/60">Members: {team.playerIds?.length || 0}</p>
 
                                 <div className="mt-4 flex gap-2">
                                     <Link

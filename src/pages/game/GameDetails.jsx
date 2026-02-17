@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useContext } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
-import { AuthContext } from "../../security/AuthContext.jsx";
-import {apiFetch} from "../../config/apiBase.jsx";
+import React, { useEffect, useMemo, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { logoutThunk } from "../../store/slices/authSlice.js";
+import { apiFetch } from "../../config/apiBase.jsx";
 
 function Section({ title, children }) {
     return (
@@ -13,25 +14,33 @@ function Section({ title, children }) {
 }
 
 const GameDetails = () => {
-    const { gameId } = useParams();
+    const { id, gameId } = useParams();
+    const gid = id ?? gameId;
+
     const navigate = useNavigate();
-    const { token, user, isTokenExpired } = useContext(AuthContext);
+    const dispatch = useDispatch();
+
+    const token = useSelector((s) => s.auth.token);
+    const cleanToken = useMemo(
+        () => (typeof token === "string" ? token.trim().replace(/^Bearer\s+/i, "") : ""),
+        [token]
+    );
 
     const [game, setGame] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    const on401 = () => {
+        dispatch(logoutThunk());
+        navigate("/login", { replace: true });
+    };
+
     useEffect(() => {
         const fetchGame = async () => {
             try {
-                const headers = {};
-                if (token && !isTokenExpired(token)) {
-                    headers.Authorization = `Bearer ${token}`;
-                }
+                const headers = cleanToken ? { Authorization: `Bearer ${cleanToken}` } : {};
+                const res = await apiFetch(`/games/${gid}`, { headers });
 
-                const res = await apiFetch(
-                    `/games/${gameId}`,
-                    { headers }
-                );
+                if (res.status === 401) return on401();
 
                 if (!res.ok) throw new Error();
                 setGame(await res.json());
@@ -43,7 +52,8 @@ const GameDetails = () => {
         };
 
         fetchGame();
-    }, [gameId, token, isTokenExpired]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [gid, cleanToken]);
 
     if (loading) {
         return (
@@ -73,26 +83,29 @@ const GameDetails = () => {
                                 className="h-full w-full object-cover"
                             />
                         ) : (
-                            <span className="text-sm text-white/40">
-                                No image
-                            </span>
+                            <span className="text-sm text-white/40">No image</span>
                         )}
                     </div>
 
                     <div className="flex-1">
-                        <h1 className="text-2xl font-semibold">
-                            {game.name}
-                        </h1>
+                        <h1 className="text-2xl font-semibold">{game.name}</h1>
 
-                        <p className="mt-2 text-sm text-white/70">
-                            {game.description}
-                        </p>
+                        <p className="mt-2 text-sm text-white/70">{game.description}</p>
 
                         <div className="mt-4 flex flex-wrap gap-4 text-sm text-white/70">
-                            <span><strong className="text-white">Type:</strong> {game.type}</span>
-                            <span><strong className="text-white">Max players/team:</strong> {game.maxPlayersPerTeam}</span>
-                            <span><strong className="text-white">Year:</strong> {game.yearOfExistence}</span>
-                            <span><strong className="text-white">Publisher:</strong> {game.publisher}</span>
+              <span>
+                <strong className="text-white">Type:</strong> {game.type}
+              </span>
+                            <span>
+                <strong className="text-white">Max players/team:</strong>{" "}
+                                {game.maxPlayersPerTeam}
+              </span>
+                            <span>
+                <strong className="text-white">Year:</strong> {game.yearOfExistence}
+              </span>
+                            <span>
+                <strong className="text-white">Publisher:</strong> {game.publisher}
+              </span>
                         </div>
                     </div>
                 </div>
@@ -112,18 +125,14 @@ const GameDetails = () => {
                                     ))}
                                 </ul>
                             ) : (
-                                <p className="text-sm text-white/60">
-                                    No platforms specified.
-                                </p>
+                                <p className="text-sm text-white/60">No platforms specified.</p>
                             )}
                         </Section>
                     </div>
 
                     <div className="lg:col-span-2 space-y-6">
                         <Section title="Rules">
-                            <p className="text-sm whitespace-pre-line">
-                                {game.rules || "No rules provided."}
-                            </p>
+                            <p className="text-sm whitespace-pre-line">{game.rules || "No rules provided."}</p>
                         </Section>
 
                         <Section title="Tutorial">

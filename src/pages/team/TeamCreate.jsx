@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AuthContext } from "../../security/AuthContext.jsx";
+import { useDispatch, useSelector } from "react-redux";
+import { logoutThunk } from "../../store/slices/authSlice.js";
 import ImagePicker from "../../components/ui/ImagePicker.jsx";
-import {apiFetch} from "../../config/apiBase.jsx";
+import { apiFetch } from "../../config/apiBase.jsx";
 
 function Section({ title, children }) {
     return (
@@ -14,8 +15,16 @@ function Section({ title, children }) {
 }
 
 const TeamCreate = () => {
-    const { token, user, isTokenExpired, logout } = useContext(AuthContext);
     const navigate = useNavigate();
+    const dispatch = useDispatch();
+
+    const token = useSelector((s) => s.auth.token);
+    const user = useSelector((s) => s.auth.user);
+
+    const cleanToken = useMemo(
+        () => (typeof token === "string" ? token.trim().replace(/^Bearer\s+/i, "") : ""),
+        [token]
+    );
 
     const [games, setGames] = useState([]);
     const [loadingGames, setLoadingGames] = useState(true);
@@ -27,17 +36,23 @@ const TeamCreate = () => {
     });
 
     useEffect(() => {
-        if (!token || isTokenExpired(token)) {
-            logout();
-            navigate("/login");
+        if (!cleanToken) {
+            navigate("/login", { replace: true });
             return;
         }
 
         const fetchGames = async () => {
             try {
                 const res = await apiFetch("/api/games/list", {
-                    headers: { Authorization: `Bearer ${token}` },
+                    headers: { Authorization: `Bearer ${cleanToken}` },
                 });
+
+                if (res.status === 401) {
+                    dispatch(logoutThunk());
+                    navigate("/login", { replace: true });
+                    return;
+                }
+
                 if (res.ok) setGames(await res.json());
             } finally {
                 setLoadingGames(false);
@@ -45,14 +60,19 @@ const TeamCreate = () => {
         };
 
         fetchGames();
-    }, [token, isTokenExpired, logout, navigate]);
+    }, [cleanToken, dispatch, navigate]);
 
-    const update = (key, value) =>
-        setForm((f) => ({ ...f, [key]: value }));
+    const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
     const handleCreate = async () => {
         if (!form.name || !form.gameId) {
             alert("Please fill all required fields.");
+            return;
+        }
+        if (!user?.username) {
+            alert("Missing user info. Please re-login.");
+            dispatch(logoutThunk());
+            navigate("/login", { replace: true });
             return;
         }
 
@@ -67,16 +87,19 @@ const TeamCreate = () => {
         try {
             const res = await apiFetch("/api/teams", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify(payload),
+                headers: { Authorization: `Bearer ${cleanToken}` },
+                body: payload, // apiFetch gère JSON.stringify + Content-Type
             });
+
+            if (res.status === 401) {
+                dispatch(logoutThunk());
+                navigate("/login", { replace: true });
+                return;
+            }
 
             if (!res.ok) {
                 const txt = await res.text();
-                alert(txt);
+                alert(txt || "Failed to create team.");
                 return;
             }
 
@@ -89,9 +112,7 @@ const TeamCreate = () => {
     return (
         <main className="min-h-screen bg-neutral-950 text-white">
             <section className="mx-auto max-w-4xl px-4 py-12 space-y-6">
-                <h1 className="text-3xl font-semibold text-center sm:text-4xl">
-                    Create Team
-                </h1>
+                <h1 className="text-3xl font-semibold text-center sm:text-4xl">Create Team</h1>
 
                 <Section title="Team Information">
                     <input
@@ -107,9 +128,7 @@ const TeamCreate = () => {
                         disabled={loadingGames}
                         className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
                     >
-                        <option value="">
-                            {loadingGames ? "Loading games…" : "Select game"}
-                        </option>
+                        <option value="">{loadingGames ? "Loading games…" : "Select game"}</option>
                         {games.map((g) => (
                             <option key={g.id} value={g.id}>
                                 {g.name}
@@ -119,12 +138,7 @@ const TeamCreate = () => {
                 </Section>
 
                 <Section title="Team Logo">
-                    <ImagePicker
-                        label="Choose team logo"
-                        value={form.teamLogo}
-                        onChange={(img) => update("teamLogo", img)}
-                    />
-
+                    <ImagePicker label="Choose team logo" value={form.teamLogo} onChange={(img) => update("teamLogo", img)} />
                 </Section>
 
                 <div className="flex justify-center">

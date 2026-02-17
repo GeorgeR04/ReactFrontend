@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useRef, useState, useContext } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AuthContext } from "../../security/AuthContext.jsx";
+import { useDispatch, useSelector } from "react-redux";
+import { logoutThunk } from "../../store/slices/authSlice.js";
 import { Search, Plus, Lightbulb, Pencil, Trash2, BookOpen, X } from "lucide-react";
 import {apiFetch} from "../../config/apiBase.jsx";
 
@@ -8,11 +9,13 @@ function cx(...classes) {
     return classes.filter(Boolean).join(" ");
 }
 
-const TYPES = ["FPS", "MOBA"]; // ajoute d'autres types si besoin
+const TYPES = ["FPS", "MOBA","OTHER"];
 
 const GameExplore = () => {
-    const { token, user } = useContext(AuthContext);
-    const cleanToken = useMemo(() => token?.trim() || "", [token]);
+    const dispatch = useDispatch();
+
+    const token = useSelector((s) => s.auth.token);
+    const user = useSelector((s) => s.auth.user);
 
     const [games, setGames] = useState([]);
     const [status, setStatus] = useState("loading"); // loading | ready | error
@@ -25,9 +28,18 @@ const GameExplore = () => {
 
     const navigate = useNavigate();
 
-    // modal a11y
     const modalRef = useRef(null);
     const lastActiveElRef = useRef(null);
+
+    const cleanToken = useMemo(
+        () => (typeof token === "string" ? token.trim().replace(/^Bearer\s+/i, "") : ""),
+        [token]
+    );
+
+    const on401 = () => {
+        dispatch(logoutThunk());
+        navigate("/login", { replace: true });
+    };
 
     useEffect(() => {
         const fetchGames = async () => {
@@ -35,7 +47,10 @@ const GameExplore = () => {
             setError("");
 
             try {
-                const response = await apiFetch("/games/list");
+                const headers = cleanToken ? { Authorization: `Bearer ${cleanToken}` } : {};
+                const response = await apiFetch("/games/list", { headers });
+
+                if (response.status === 401) return on401();
                 if (!response.ok) throw new Error("Failed to fetch games.");
 
                 const data = await response.json();
@@ -80,10 +95,11 @@ const GameExplore = () => {
 
     const handleModifyGame = (gameId) => navigate(`/games/${gameId}/edit`);
 
+    const myId = user?.userId ?? user?.id ?? user?.username;
     const isGameOwnerOrModerator = (game) =>
         user?.role === "organizer_moderator" ||
         user?.role === "moderator" ||
-        game.organizerId === user?.userId;
+        (myId != null && String(game.organizerId) === String(myId));
 
     const openDeleteModal = (game) => {
         lastActiveElRef.current = document.activeElement;
@@ -124,6 +140,8 @@ const GameExplore = () => {
                     headers: { Authorization: `Bearer ${cleanToken}` },
                 }
             );
+
+            if (response.status === 401) return on401();
 
             if (response.ok) {
                 setGames((prev) => prev.filter((g) => g.id !== gameToDelete.id));

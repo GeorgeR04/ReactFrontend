@@ -1,24 +1,26 @@
-import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { Menu, X, Bell, MessageSquare } from "lucide-react";
-import { AuthContext } from "../security/AuthContext.jsx";
 import logoImage from "../assets/Image/placeholder/Logo1.png";
 import { useMessageNotifications } from "./hooks/useMessageNotifications.jsx";
 import { apiFetch } from "../config/apiBase.jsx";
+import { useDispatch, useSelector } from "react-redux";
+import { logoutThunk } from "../store/slices/authSlice";
+
 function cx(...classes) {
     return classes.filter(Boolean).join(" ");
 }
-
 const Header = () => {
     const location = useLocation();
     const navigate = useNavigate();
-    const { token, user, logout } = useContext(AuthContext);
+
+    const dispatch = useDispatch();
+    const token = useSelector((s) => s.auth.token);
+    const user = useSelector((s) => s.auth.user);
 
     const [pendingCount, setPendingCount] = useState(0);
-
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
-
     const [isMsgOpen, setIsMsgOpen] = useState(false);
 
     const dropdownRef = useRef(null);
@@ -26,21 +28,17 @@ const Header = () => {
 
     const pathname = useMemo(() => location.pathname, [location.pathname]);
 
-    const { totalUnread, items: msgItems, markReadFromSender } = useMessageNotifications({
+    const { totalUnread, items: msgItems } = useMessageNotifications({
         token,
         enabled: Boolean(token && user),
-        pollMs: 8000,
+        pollMs: 800,
     });
 
     const handleLogout = () => {
-        logout();
+        dispatch(logoutThunk());
         setIsDropdownOpen(false);
         setIsMobileOpen(false);
         setIsMsgOpen(false);
-
-        if (location.pathname.startsWith("/user")) {
-            navigate("/login");
-        }
     };
 
     // close menus on route change

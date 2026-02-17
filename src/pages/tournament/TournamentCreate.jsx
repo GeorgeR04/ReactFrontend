@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { AuthContext } from "../../security/AuthContext.jsx";
+import { useDispatch, useSelector } from "react-redux";
+import { logoutThunk } from "../../store/slices/authSlice.js";
 import ImagePicker from "../../components/ui/ImagePicker.jsx";
-import {apiFetch} from "../../config/apiBase.jsx";
+import { apiFetch } from "../../config/apiBase.jsx";
+
 function Section({ title, children }) {
     return (
         <div className="rounded-2xl border border-white/10 bg-black/55 p-6 shadow-2xl backdrop-blur">
@@ -13,8 +15,12 @@ function Section({ title, children }) {
 }
 
 const TournamentCreate = () => {
-    const { token, user, isTokenExpired, logout } = useContext(AuthContext);
+    const dispatch = useDispatch();
     const navigate = useNavigate();
+
+    const token = useSelector((s) => s.auth.token);
+    const user = useSelector((s) => s.auth.user);
+    const cleanToken = (token || "").trim();
 
     const [games, setGames] = useState([]);
     const [loadingGames, setLoadingGames] = useState(true);
@@ -34,17 +40,29 @@ const TournamentCreate = () => {
     });
 
     useEffect(() => {
-        if (!token || isTokenExpired(token)) {
-            logout();
-            navigate("/login");
+        if (!cleanToken) {
+            navigate("/login", { replace: true });
+            return;
+        }
+
+        // (optionnel) si tu veux hard-block ici aussi
+        if (user?.role && user.role !== "organizer") {
+            navigate("/tournament/explore", { replace: true });
             return;
         }
 
         const fetchGames = async () => {
             try {
                 const res = await apiFetch("/api/games/list", {
-                    headers: { Authorization: `Bearer ${token}` },
+                    headers: { Authorization: `Bearer ${cleanToken}` },
                 });
+
+                if (res.status === 401) {
+                    dispatch(logoutThunk());
+                    navigate("/login", { replace: true });
+                    return;
+                }
+
                 if (res.ok) setGames(await res.json());
             } finally {
                 setLoadingGames(false);
@@ -52,23 +70,12 @@ const TournamentCreate = () => {
         };
 
         fetchGames();
-    }, [token, isTokenExpired, logout, navigate]);
+    }, [cleanToken, user?.role, dispatch, navigate]);
 
-    const update = (key, value) =>
-        setForm((f) => ({ ...f, [key]: value }));
-
-    const handleImageChange = (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = () =>
-            update("image", reader.result.split(",")[1]);
-        reader.readAsDataURL(file);
-    };
+    const update = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
     const handleCreate = async () => {
-        if (!form.maxTeams || form.maxTeams <= 0) {
+        if (!form.maxTeams || Number(form.maxTeams) <= 0) {
             alert("Please provide a valid max players / teams value.");
             return;
         }
@@ -84,35 +91,31 @@ const TournamentCreate = () => {
 
         const payload = {
             ...form,
-            maxTeams: parseInt(form.maxTeams),
-            minRankRequirement: form.minRankRequirement
-                ? parseInt(form.minRankRequirement)
-                : null,
-            maxRankRequirement: form.maxRankRequirement
-                ? parseInt(form.maxRankRequirement)
-                : null,
+            maxTeams: parseInt(form.maxTeams, 10),
+            minRankRequirement: form.minRankRequirement ? parseInt(form.minRankRequirement, 10) : null,
+            maxRankRequirement: form.maxRankRequirement ? parseInt(form.maxRankRequirement, 10) : null,
             trustFactorRequirement: form.trustFactorRequirement
-                ? parseInt(form.trustFactorRequirement)
+                ? parseInt(form.trustFactorRequirement, 10)
                 : null,
             cashPrize: form.cashPrize ? parseFloat(form.cashPrize) : 0,
         };
 
         try {
-            const res = await apiFetch(
-                "/tournaments/create",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify(payload),
-                }
-            );
+            const res = await apiFetch("/tournaments/create", {
+                method: "POST",
+                headers: { Authorization: `Bearer ${cleanToken}` },
+                body: payload, // apiFetch gère JSON.stringify + Content-Type
+            });
+
+            if (res.status === 401) {
+                dispatch(logoutThunk());
+                navigate("/login", { replace: true });
+                return;
+            }
 
             if (!res.ok) {
                 const err = await res.text();
-                alert(err);
+                alert(err || "Failed to create tournament.");
                 return;
             }
 
@@ -125,9 +128,7 @@ const TournamentCreate = () => {
     return (
         <main className="min-h-screen bg-neutral-950 text-white">
             <section className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8 space-y-6">
-                <h1 className="text-3xl font-semibold text-center sm:text-4xl">
-                    Create Tournament
-                </h1>
+                <h1 className="text-3xl font-semibold text-center sm:text-4xl">Create Tournament</h1>
 
                 <Section title="General Information">
                     <input
@@ -152,9 +153,7 @@ const TournamentCreate = () => {
                         disabled={loadingGames}
                         className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
                     >
-                        <option value="">
-                            {loadingGames ? "Loading games…" : "Select game"}
-                        </option>
+                        <option value="">{loadingGames ? "Loading games…" : "Select game"}</option>
                         {games.map((g) => (
                             <option key={g.id} value={g.id}>
                                 {g.name}
@@ -173,9 +172,7 @@ const TournamentCreate = () => {
 
                     <input
                         type="number"
-                        placeholder={
-                            form.type === "team" ? "Max teams" : "Max players"
-                        }
+                        placeholder={form.type === "team" ? "Max teams" : "Max players"}
                         value={form.maxTeams}
                         onChange={(e) => update("maxTeams", e.target.value)}
                         className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
@@ -187,27 +184,21 @@ const TournamentCreate = () => {
                         type="number"
                         placeholder="Min rank"
                         value={form.minRankRequirement}
-                        onChange={(e) =>
-                            update("minRankRequirement", e.target.value)
-                        }
+                        onChange={(e) => update("minRankRequirement", e.target.value)}
                         className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
                     />
                     <input
                         type="number"
                         placeholder="Max rank"
                         value={form.maxRankRequirement}
-                        onChange={(e) =>
-                            update("maxRankRequirement", e.target.value)
-                        }
+                        onChange={(e) => update("maxRankRequirement", e.target.value)}
                         className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
                     />
                     <input
                         type="number"
                         placeholder="Trust factor requirement"
                         value={form.trustFactorRequirement}
-                        onChange={(e) =>
-                            update("trustFactorRequirement", e.target.value)
-                        }
+                        onChange={(e) => update("trustFactorRequirement", e.target.value)}
                         className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white"
                     />
                 </Section>

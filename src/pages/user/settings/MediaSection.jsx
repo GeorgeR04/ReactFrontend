@@ -1,9 +1,11 @@
 import { useContext, useRef, useState } from "react";
-import { AuthContext } from "../../../security/AuthContext.jsx";
+import { useDispatch, useSelector } from "react-redux";
+import { apiFetch } from "../../../config/apiBase.jsx";
+import { fetchMyProfile } from "../../../store/slices/profilesSlice";
 
 export default function MediaSection() {
-    const { token } = useContext(AuthContext);
-
+    const dispatch = useDispatch();
+    const token = useSelector((s) => s.auth.token);
     const [selectedImage, setSelectedImage] = useState(null);
     const [imageType, setImageType] = useState(null);
     const [error, setError] = useState("");
@@ -34,13 +36,14 @@ export default function MediaSection() {
             formData.append("file", blob);
             formData.append("type", imageType);
 
-            const res = await fetch("http://localhost:8080/api/profile/upload-image", {
+            const res = await apiFetch("/api/profile/upload-image", {
                 method: "POST",
                 headers: { Authorization: `Bearer ${token}` },
-                body: formData,
+                body: formData, // FormData
             });
 
             if (!res.ok) throw new Error("Upload failed");
+            dispatch(fetchMyProfile({ token: String(token).trim() }));
 
             alert("Image updated successfully");
         } catch (e) {

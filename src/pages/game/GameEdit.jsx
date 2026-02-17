@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { AuthContext } from "../../security/AuthContext.jsx";
+import { useDispatch, useSelector } from "react-redux";
+import { logoutThunk } from "../../store/slices/authSlice.js";
 import ImagePicker from "../../components/ui/ImagePicker.jsx";
-import {apiFetch} from "../../config/apiBase.jsx";
+import { apiFetch } from "../../config/apiBase.jsx";
 
 function Section({ title, children }) {
     return (
@@ -16,39 +17,43 @@ function Section({ title, children }) {
 const GameEdit = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { token, isTokenExpired, logout, user } =
-        useContext(AuthContext);
+    const dispatch = useDispatch();
+
+    const token = useSelector((s) => s.auth.token);
+    const cleanToken = useMemo(
+        () => (typeof token === "string" ? token.trim().replace(/^Bearer\s+/i, "") : ""),
+        [token]
+    );
 
     const [form, setForm] = useState(null);
     const [loading, setLoading] = useState(true);
 
+    const on401 = () => {
+        dispatch(logoutThunk());
+        navigate("/login", { replace: true });
+    };
+
     useEffect(() => {
-        if (!token || isTokenExpired(token)) {
-            logout();
-            navigate("/login");
-            return;
-        }
+        if (!cleanToken) return on401();
 
         const fetchGame = async () => {
             try {
-                const res = await apiFetch(
-                    `/games/${id}`,
-                    {
-                        headers: { Authorization: `Bearer ${token}` },
-                    }
-                );
+                const res = await apiFetch(`/games/${id}`, {
+                    headers: { Authorization: `Bearer ${cleanToken}` },
+                });
 
+                if (res.status === 401) return on401();
                 if (!res.ok) throw new Error();
-                const data = await res.json();
 
+                const data = await res.json();
                 setForm({
                     name: data.name || "",
                     type: data.type || "",
                     description: data.description || "",
                     rules: data.rules || "",
                     tutorial: data.tutorial || "",
-                    maxPlayers: data.maxPlayersPerTeam || "",
-                    yearOfExistence: data.yearOfExistence || "",
+                    maxPlayers: data.maxPlayersPerTeam ?? "",
+                    yearOfExistence: data.yearOfExistence ?? "",
                     publisher: data.publisher || "",
                     platforms: data.platforms || [],
                     gameImage: data.gameImage || null,
@@ -61,21 +66,19 @@ const GameEdit = () => {
         };
 
         fetchGame();
-    }, [id, token, isTokenExpired, logout, navigate]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [id, cleanToken]);
 
-    const update = (k, v) =>
-        setForm((f) => ({ ...f, [k]: v }));
+    const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
     const togglePlatform = (p) =>
         update(
             "platforms",
-            form.platforms.includes(p)
-                ? form.platforms.filter((x) => x !== p)
-                : [...form.platforms, p]
+            form.platforms.includes(p) ? form.platforms.filter((x) => x !== p) : [...form.platforms, p]
         );
 
     const handleUpdate = async () => {
-        if (!form.name || !form.type || !form.description) {
+        if (!form?.name || !form?.type || !form?.description) {
             alert("Missing required fields.");
             return;
         }
@@ -86,25 +89,21 @@ const GameEdit = () => {
             description: form.description,
             rules: form.rules,
             tutorial: form.tutorial,
-            maxPlayersPerTeam: parseInt(form.maxPlayers),
-            yearOfExistence: parseInt(form.yearOfExistence),
+            maxPlayersPerTeam: form.maxPlayers !== "" ? parseInt(form.maxPlayers, 10) : null,
+            yearOfExistence: form.yearOfExistence !== "" ? parseInt(form.yearOfExistence, 10) : null,
             publisher: form.publisher,
             platforms: form.platforms,
             gameImage: form.gameImage,
         };
 
         try {
-            const res = await apiFetch(
-                `/games/${id}`,
-                {
-                    method: "PUT",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`,
-                    },
-                    body: JSON.stringify(payload),
-                }
-            );
+            const res = await apiFetch(`/games/${id}`, {
+                method: "PUT",
+                headers: { Authorization: `Bearer ${cleanToken}` },
+                body: payload,
+            });
+
+            if (res.status === 401) return on401();
 
             if (!res.ok) {
                 alert(await res.text());
@@ -136,9 +135,7 @@ const GameEdit = () => {
     return (
         <main className="min-h-screen bg-neutral-950 text-white">
             <section className="mx-auto max-w-5xl px-4 py-12 space-y-6">
-                <h1 className="text-3xl font-semibold text-center sm:text-4xl">
-                    Modify Game
-                </h1>
+                <h1 className="text-3xl font-semibold text-center sm:text-4xl">Modify Game</h1>
 
                 <Section title="General Information">
                     <input

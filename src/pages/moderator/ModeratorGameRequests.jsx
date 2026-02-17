@@ -1,9 +1,18 @@
-import React, { useEffect, useState, useContext } from "react";
-import { AuthContext } from "../../security/AuthContext.jsx";
-import {apiFetch} from "../../config/apiBase.jsx";
+import React, { useEffect, useMemo, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { logoutThunk } from "../../store/slices/authSlice.js";
+import { apiFetch } from "../../config/apiBase.jsx";
 
 const ModeratorGameRequests = () => {
-    const { token } = useContext(AuthContext);
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
+
+    const token = useSelector((s) => s.auth.token);
+    const cleanToken = useMemo(
+        () => (typeof token === "string" ? token.trim().replace(/^Bearer\s+/i, "") : ""),
+        [token]
+    );
 
     const [requests, setRequests] = useState([]);
     const [selected, setSelected] = useState(null);
@@ -11,38 +20,47 @@ const ModeratorGameRequests = () => {
     const [reason, setReason] = useState("");
     const [loading, setLoading] = useState(false);
 
-    /* =========================
-       LOAD PENDING REQUESTS
-       ========================= */
-    useEffect(() => {
-        apiFetch("/game-requests/pending", {
-            headers: { Authorization: `Bearer ${token}` },
-        })
-            .then((r) => r.json())
-            .then(setRequests)
-            .catch(() => setError("Failed to load requests"));
-    }, [token]);
+    const on401 = () => {
+        dispatch(logoutThunk());
+        navigate("/login", { replace: true });
+    };
 
-    /* =========================
-       APPROVE (SEND FULL OBJECT)
-       ========================= */
+    useEffect(() => {
+        if (!cleanToken) return;
+
+        const load = async () => {
+            setError("");
+            try {
+                const res = await apiFetch("/game-requests/pending", {
+                    headers: { Authorization: `Bearer ${cleanToken}` },
+                });
+
+                if (res.status === 401) return on401();
+                if (!res.ok) throw new Error();
+
+                const data = await res.json();
+                setRequests(Array.isArray(data) ? data : []);
+            } catch {
+                setError("Failed to load requests");
+            }
+        };
+
+        load();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [cleanToken]);
+
     const approve = async () => {
         if (!selected) return;
 
         setLoading(true);
         try {
-            const res = await apiFetch(
-                `/game-requests/${selected.id}/approve`,
-                {
-                    method: "PUT",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(selected),
-                }
-            );
+            const res = await apiFetch(`/game-requests/${selected.id}/approve`, {
+                method: "PUT",
+                headers: { Authorization: `Bearer ${cleanToken}` },
+                body: selected, // apiFetch gère JSON.stringify + Content-Type
+            });
 
+            if (res.status === 401) return on401();
             if (!res.ok) throw new Error();
 
             setRequests((prev) => prev.filter((r) => r.id !== selected.id));
@@ -54,10 +72,8 @@ const ModeratorGameRequests = () => {
         }
     };
 
-    /* =========================
-       REJECT
-       ========================= */
     const reject = async () => {
+        if (!selected) return;
         if (!reason.trim()) {
             alert("Rejection reason is required");
             return;
@@ -65,18 +81,16 @@ const ModeratorGameRequests = () => {
 
         setLoading(true);
         try {
-            const res = await apiFetch(
-                `/api/game-requests/${selected.id}/reject`,
-                {
-                    method: "PUT",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        "Content-Type": "text/plain",
-                    },
-                    body: reason,
-                }
-            );
+            const res = await apiFetch(`/api/game-requests/${selected.id}/reject`, {
+                method: "PUT",
+                headers: {
+                    Authorization: `Bearer ${cleanToken}`,
+                    "Content-Type": "text/plain",
+                },
+                body: reason,
+            });
 
+            if (res.status === 401) return on401();
             if (!res.ok) throw new Error();
 
             setRequests((prev) => prev.filter((r) => r.id !== selected.id));
@@ -91,9 +105,7 @@ const ModeratorGameRequests = () => {
 
     return (
         <main className="min-h-screen bg-neutral-950 text-white px-6 py-10">
-            <h1 className="text-3xl font-semibold mb-6">
-                Game Requests (Moderator)
-            </h1>
+            <h1 className="text-3xl font-semibold mb-6">Game Requests (Moderator)</h1>
 
             {error && (
                 <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
@@ -102,54 +114,38 @@ const ModeratorGameRequests = () => {
             )}
 
             <div className="grid md:grid-cols-[320px_1fr] gap-6">
-                {/* LIST */}
                 <aside className="space-y-3">
-                    {requests.length === 0 && (
-                        <p className="text-sm text-white/60">
-                            No pending requests 🎉
-                        </p>
-                    )}
+                    {requests.length === 0 && <p className="text-sm text-white/60">No pending requests 🎉</p>}
 
                     {requests.map((r) => (
                         <button
                             key={r.id}
                             onClick={() => setSelected(r)}
                             className={`w-full text-left rounded-xl p-3 border ${
-                                selected?.id === r.id
-                                    ? "border-white bg-white/10"
-                                    : "border-white/10 bg-white/5 hover:bg-white/10"
+                                selected?.id === r.id ? "border-white bg-white/10" : "border-white/10 bg-white/5 hover:bg-white/10"
                             }`}
                         >
                             <p className="font-semibold">{r.name}</p>
-                            <p className="text-xs text-white/60">
-                                by {r.createdBy}
-                            </p>
+                            <p className="text-xs text-white/60">by {r.createdBy}</p>
                         </button>
                     ))}
                 </aside>
 
-                {/* EDIT PANEL */}
                 {selected && (
                     <section className="rounded-2xl border border-white/10 bg-black/55 p-6 space-y-4">
-                        <h2 className="text-xl font-semibold">
-                            Review: {selected.name}
-                        </h2>
+                        <h2 className="text-xl font-semibold">Review: {selected.name}</h2>
 
                         <input
                             placeholder="Game name"
                             value={selected.name || ""}
-                            onChange={(e) =>
-                                setSelected({ ...selected, name: e.target.value })
-                            }
+                            onChange={(e) => setSelected({ ...selected, name: e.target.value })}
                             className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm"
                         />
 
                         <input
                             placeholder="Type"
                             value={selected.type || ""}
-                            onChange={(e) =>
-                                setSelected({ ...selected, type: e.target.value })
-                            }
+                            onChange={(e) => setSelected({ ...selected, type: e.target.value })}
                             className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm"
                         />
 
@@ -157,12 +153,7 @@ const ModeratorGameRequests = () => {
                             rows={3}
                             placeholder="Description"
                             value={selected.description || ""}
-                            onChange={(e) =>
-                                setSelected({
-                                    ...selected,
-                                    description: e.target.value,
-                                })
-                            }
+                            onChange={(e) => setSelected({ ...selected, description: e.target.value })}
                             className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm"
                         />
 
@@ -170,9 +161,7 @@ const ModeratorGameRequests = () => {
                             rows={3}
                             placeholder="Rules"
                             value={selected.rules || ""}
-                            onChange={(e) =>
-                                setSelected({ ...selected, rules: e.target.value })
-                            }
+                            onChange={(e) => setSelected({ ...selected, rules: e.target.value })}
                             className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm"
                         />
 
@@ -180,12 +169,7 @@ const ModeratorGameRequests = () => {
                             rows={3}
                             placeholder="Tutorial"
                             value={selected.tutorial || ""}
-                            onChange={(e) =>
-                                setSelected({
-                                    ...selected,
-                                    tutorial: e.target.value,
-                                })
-                            }
+                            onChange={(e) => setSelected({ ...selected, tutorial: e.target.value })}
                             className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm"
                         />
 
@@ -193,12 +177,7 @@ const ModeratorGameRequests = () => {
                             type="number"
                             placeholder="Max players per team"
                             value={selected.maxPlayersPerTeam || ""}
-                            onChange={(e) =>
-                                setSelected({
-                                    ...selected,
-                                    maxPlayersPerTeam: Number(e.target.value),
-                                })
-                            }
+                            onChange={(e) => setSelected({ ...selected, maxPlayersPerTeam: Number(e.target.value) })}
                             className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm"
                         />
 
@@ -206,28 +185,17 @@ const ModeratorGameRequests = () => {
                             type="number"
                             placeholder="Year of existence"
                             value={selected.yearOfExistence || ""}
-                            onChange={(e) =>
-                                setSelected({
-                                    ...selected,
-                                    yearOfExistence: Number(e.target.value),
-                                })
-                            }
+                            onChange={(e) => setSelected({ ...selected, yearOfExistence: Number(e.target.value) })}
                             className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm"
                         />
 
                         <input
                             placeholder="Publisher"
                             value={selected.publisher || ""}
-                            onChange={(e) =>
-                                setSelected({
-                                    ...selected,
-                                    publisher: e.target.value,
-                                })
-                            }
+                            onChange={(e) => setSelected({ ...selected, publisher: e.target.value })}
                             className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm"
                         />
 
-                        {/* ACTIONS */}
                         <div className="flex gap-3 pt-4">
                             <button
                                 disabled={loading}

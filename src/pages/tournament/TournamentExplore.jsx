@@ -1,7 +1,8 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { AuthContext } from "../../security/AuthContext.jsx";
-import {apiFetch} from "../../config/apiBase.jsx";
+import { useDispatch, useSelector } from "react-redux";
+import { logoutThunk } from "../../store/slices/authSlice.js";
+import { apiFetch } from "../../config/apiBase.jsx";
 
 function cx(...c) {
     return c.filter(Boolean).join(" ");
@@ -12,23 +13,38 @@ const TournamentExplore = () => {
     const [filtered, setFiltered] = useState([]);
     const [search, setSearch] = useState("");
     const [loading, setLoading] = useState(true);
-
     const [filterDate, setFilterDate] = useState("");
     const [filterType, setFilterType] = useState("");
     const [filterOrganizer, setFilterOrganizer] = useState("");
     const [filterRank, setFilterRank] = useState("");
-
-    const { token, user } = useContext(AuthContext);
+    const dispatch = useDispatch();
     const navigate = useNavigate();
+    const token = useSelector((s) => s.auth.token);
+    const user = useSelector((s) => s.auth.user);
+    const cleanToken = (token || "").trim();
 
     const fetchTournaments = async () => {
         try {
             setLoading(true);
-            const res = await apiFetch("/api/tournaments/list");
+
+            const headers = {};
+            if (cleanToken) headers.Authorization = `Bearer ${cleanToken}`;
+
+            const res = await apiFetch("/api/tournaments/list", { headers });
+
+            if (res.status === 401) {
+                dispatch(logoutThunk());
+                navigate("/login", { replace: true });
+                return;
+            }
+
             if (res.ok) {
                 const data = await res.json();
                 setTournaments(data);
                 setFiltered(data);
+            } else {
+                setTournaments([]);
+                setFiltered([]);
             }
         } finally {
             setLoading(false);
@@ -37,6 +53,7 @@ const TournamentExplore = () => {
 
     useEffect(() => {
         fetchTournaments();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -44,11 +61,9 @@ const TournamentExplore = () => {
             tournaments.filter((t) => {
                 return (
                     t.name.toLowerCase().includes(search.toLowerCase()) &&
-                    (!filterDate ||
-                        new Date(t.date).toISOString().split("T")[0] === filterDate) &&
+                    (!filterDate || new Date(t.date).toISOString().split("T")[0] === filterDate) &&
                     (!filterType || t.type === filterType) &&
-                    (!filterOrganizer ||
-                        t.organizerNames?.includes(filterOrganizer)) &&
+                    (!filterOrganizer || t.organizerNames?.includes(filterOrganizer)) &&
                     (!filterRank || t.rank === filterRank)
                 );
             })
@@ -66,9 +81,7 @@ const TournamentExplore = () => {
     return (
         <main className="min-h-screen bg-neutral-950 text-white">
             <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:px-8">
-                <h1 className="text-3xl font-semibold text-center sm:text-4xl">
-                    Explore Tournaments
-                </h1>
+                <h1 className="text-3xl font-semibold text-center sm:text-4xl">Explore Tournaments</h1>
 
                 {/* Create */}
                 {user?.role === "organizer" && (
@@ -121,15 +134,12 @@ const TournamentExplore = () => {
 
                 {/* List */}
                 {filtered.length === 0 ? (
-                    <p className="mt-12 text-center text-white/60">
-                        No tournaments found.
-                    </p>
+                    <p className="mt-12 text-center text-white/60">No tournaments found.</p>
                 ) : (
                     <ul className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                         {filtered.map((t) => {
                             const isOrganizer =
-                                user?.role === "organizer" &&
-                                t.organizerNames?.includes(user.username);
+                                user?.role === "organizer" && t.organizerNames?.includes(user.username);
 
                             return (
                                 <li
@@ -144,16 +154,12 @@ const TournamentExplore = () => {
                                                 className="h-full w-full object-cover"
                                             />
                                         ) : (
-                                            <span className="text-sm text-white/40">
-                        No image
-                      </span>
+                                            <span className="text-sm text-white/40">No image</span>
                                         )}
                                     </div>
 
                                     <h2 className="mt-4 text-lg font-semibold">{t.name}</h2>
-                                    <p className="mt-1 text-sm text-white/70 line-clamp-2">
-                                        {t.description}
-                                    </p>
+                                    <p className="mt-1 text-sm text-white/70 line-clamp-2">{t.description}</p>
 
                                     <div className="mt-4 text-sm text-white/80 space-y-1">
                                         <p>Game: {t.gameName}</p>
@@ -171,9 +177,7 @@ const TournamentExplore = () => {
 
                                         {isOrganizer && (
                                             <button
-                                                onClick={() =>
-                                                    navigate(`/tournament/edit/${t.id}`)
-                                                }
+                                                onClick={() => navigate(`/tournament/edit/${t.id}`)}
                                                 className="rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-sm hover:bg-white/10"
                                             >
                                                 Edit

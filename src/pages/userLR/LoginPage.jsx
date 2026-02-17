@@ -1,55 +1,38 @@
-import React, { useEffect, useState, useContext } from "react";
-import { Link } from "react-router-dom";
-import { AuthContext } from "../../security/AuthContext.jsx";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import backgroundImage from "../../assets/Image/third_party/pageImage/loginbacbg.jpg";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
-
 import Hero from "../../components/layout/Hero.jsx";
 import CornerBadge from "../../components/ui/CornerBadge.jsx";
-import {apiFetch} from "../../config/apiBase.jsx";
+import { useDispatch, useSelector } from "react-redux";
+import { loginWithCredentials } from "../../store/slices/authSlice";
 
 function Login() {
-    const { login } = useContext(AuthContext);
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
+
+    const authStatus = useSelector((s) => s.auth.status);
+    const authError = useSelector((s) => s.auth.error);
+    const token = useSelector((s) => s.auth.token);
 
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
     const [showPassword, setShowPassword] = useState(false);
-
     const [isLoaded, setIsLoaded] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
 
     useEffect(() => setIsLoaded(true), []);
 
+    useEffect(() => {
+        // si login ok → retourne à la page d’avant
+        if (token) navigate(-1);
+    }, [token, navigate]);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setError("");
-        setIsSubmitting(true);
-
-        try {
-            const response = await apiFetch("/api/auth/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, password }),
-            });
-
-            if (!response.ok) {
-                let message = "Login failed";
-                try {
-                    const errorData = await response.json();
-                    message = errorData.message || message;
-                } catch {}
-                throw new Error(message);
-            }
-
-            const data = await response.json();
-            login(data.token);
-        } catch (err) {
-            setError(err.message || "Login failed");
-        } finally {
-            setIsSubmitting(false);
-        }
+        dispatch(loginWithCredentials({ username, password }));
     };
+
+    const isSubmitting = authStatus === "loading";
 
     return (
         <Hero backgroundImage={backgroundImage}>
@@ -67,7 +50,7 @@ function Login() {
                     <form
                         onSubmit={handleSubmit}
                         className="mt-8 space-y-4"
-                        aria-describedby={error ? "login-error" : undefined}
+                        aria-describedby={authError ? "login-error" : undefined}
                     >
                         <div>
                             <label htmlFor="username" className="block text-sm font-medium text-white/80">
@@ -117,13 +100,13 @@ function Login() {
                             </Link>
                         </div>
 
-                        {error && (
+                        {authError && (
                             <p
                                 id="login-error"
                                 className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200"
                                 aria-live="polite"
                             >
-                                {error}
+                                {authError}
                             </p>
                         )}
 

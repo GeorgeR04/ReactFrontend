@@ -1,34 +1,37 @@
-import { useContext, useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { AuthContext } from "../../security/AuthContext.jsx";
+import { useDispatch, useSelector } from "react-redux";
+import { logoutThunk } from "../../store/slices/authSlice";
+import { fetchMyProfile } from "../../store/slices/profilesSlice";
 import SettingsLayout from "../../components/layout/SettingsLayout.jsx";
 import MediaSection from "./settings/MediaSection.jsx";
 import AccountSection from "./settings/AccountSection.jsx";
 import RoleSection from "./settings/RoleSection.jsx";
 import SecuritySection from "./settings/SecuritySection.jsx";
-import {apiFetch} from "../../config/apiBase.jsx";
 
 export default function SettingsPage() {
-    const { token } = useContext(AuthContext);
+    const dispatch = useDispatch();
     const navigate = useNavigate();
-
-    const [profile, setProfile] = useState(null);
+    const token = useSelector((s) => s.auth.token);
+    const me = useSelector((s) => s.profiles.me);
+    const profile = me.data;
+    const status = me.status;
+    const error = me.error;
 
     useEffect(() => {
         if (!token) return;
+        dispatch(fetchMyProfile({ token: String(token).trim() }));
+    }, [token, dispatch]);
 
-        apiFetch("/api/profile/me", {
-            headers: {
-                Authorization: `Bearer ${token}`,
-            },
-        })
-            .then((res) => {
-                if (!res.ok) throw new Error("Failed to load profile");
-                return res.json();
-            })
-            .then((data) => setProfile(data))
-            .catch(() => navigate("/login"));
-    }, [token, navigate]);
+    useEffect(() => {
+        if (!error) return;
+
+        const e = String(error).toLowerCase();
+        if (e.includes("unauthorized")) {
+            dispatch(logoutThunk());
+            navigate("/login");
+        }
+    }, [error, dispatch, navigate]);
 
     if (!profile) {
         return (

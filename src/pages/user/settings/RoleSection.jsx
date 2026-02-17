@@ -1,8 +1,12 @@
 import { useState } from "react";
 import RoleSelectionModal from "../../../components/RoleSelectionModal";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchMyProfile } from "../../../store/slices/profilesSlice";
 
 export default function RoleSection({ role }) {
     const [open, setOpen] = useState(false);
+    const dispatch = useDispatch();
+    const token = useSelector((s) => s.auth.token);
 
     return (
         <div className="rounded-2xl border border-white/10 bg-black/55 p-6 shadow-2xl backdrop-blur">
@@ -31,7 +35,7 @@ export default function RoleSection({ role }) {
             <RoleSelectionModal
                 isOpen={open}
                 onClose={() => setOpen(false)}
-                onSave={() => window.location.reload()}
+                onSave={() => dispatch(fetchMyProfile({ token: String(token).trim() }))}
             />
         </div>
     );
