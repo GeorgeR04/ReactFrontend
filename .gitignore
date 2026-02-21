@@ -27,9 +27,17 @@ dist-ssr
 # Third-party images (HLTV / ESL / teams / partner tournaments) - NOT redistributed
 /src/assets/Image/third_party/
 
+<<<<<<< HEAD
 # Env files 
 .env
 .env.prod
 .env.*
 .env.production
 !.env.example
+=======
+# Env files (never commit)
+.env
+.env.production
+.env.*
+!.env.example
+>>>>>>> 664c547 (chore: stop tracking .env.production)
